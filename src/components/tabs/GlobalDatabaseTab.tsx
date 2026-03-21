@@ -162,23 +162,23 @@ export default function GlobalDatabaseTab() {
         <h2 className="font-display text-2xl font-semibold text-white">
           Global <span style={{ color: 'hsl(18 62% 55%)' }}>Archive</span>
         </h2>
-        <p className="text-white/50 mt-1">Community timeline of archived objects — sorted by date uploaded</p>
+        <p className="text-white/70 mt-1">Community timeline of archived objects — sorted by date uploaded</p>
       </div>
 
       <div className="relative z-10 max-w-2xl mx-auto animate-reveal-up stagger-1 relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search the archive..." className="pl-10 bg-white/[0.08] border-white/15 text-white placeholder:text-white/30 focus-visible:ring-white/20" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search the archive..." className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-white/30" />
       </div>
 
       {/* Horizontal Timeline */}
       <div className="relative z-10 animate-reveal-up stagger-2">
-        {isLoading && <p className="text-white/50 text-center py-8">Loading archive...</p>}
+        {isLoading && <p className="text-white/70 text-center py-8">Loading archive...</p>}
 
         {allTimelineObjects.length === 0 && !isLoading && (
           <div className="text-center py-16">
             <Archive className="w-10 h-10 text-white/20 mx-auto mb-3" />
-            <p className="text-white/50">No objects found</p>
-            <p className="text-sm text-white/30 mt-1">Be the first to add one via the AR Camera tab</p>
+            <p className="text-white/70">No objects found</p>
+            <p className="text-sm text-white/50 mt-1">Be the first to add one via the AR Camera tab</p>
           </div>
         )}
 
@@ -210,7 +210,7 @@ export default function GlobalDatabaseTab() {
                     style={{ width: 220 }}
                   >
                     {/* Upload date label */}
-                    <p className="text-[10px] font-mono font-bold tracking-wider mb-2 text-white/50">
+                    <p className="text-[10px] font-mono font-bold tracking-wider mb-2 text-white/70">
                       {uploadDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
 
@@ -246,7 +246,7 @@ export default function GlobalDatabaseTab() {
                       )}
                       <div className="flex items-center gap-1.5 mb-0.5">
                         <h4 className={`font-display text-sm font-semibold leading-tight truncate transition-colors ${
-                          isCenterItem ? 'text-white' : 'text-white/85 group-hover:text-white'
+                          isCenterItem ? 'text-white' : 'text-white/90 group-hover:text-white'
                         }`}>
                           {obj.name}
                         </h4>
@@ -260,7 +260,7 @@ export default function GlobalDatabaseTab() {
                         </p>
                       )}
                       {obj.description && (
-                        <p className="text-xs text-white/50 line-clamp-2 leading-relaxed">{obj.description}</p>
+                        <p className="text-xs text-white/65 line-clamp-2 leading-relaxed">{obj.description}</p>
                       )}
                     </div>
                   </button>
@@ -278,7 +278,7 @@ export default function GlobalDatabaseTab() {
             <h3 className="font-display text-lg font-semibold text-white">
               Explore <span style={{ color: 'hsl(18 62% 55%)' }}>Evolutions</span>
             </h3>
-            <p className="text-sm text-white/40 mt-1">
+            <p className="text-sm text-white/60 mt-1">
               Tap any object to see how it evolved over history
             </p>
           </div>
@@ -288,12 +288,12 @@ export default function GlobalDatabaseTab() {
                 key={name}
                 onClick={() => generateEvolution(name)}
                 disabled={generatingFor !== null}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white/[0.08] border border-white/[0.12] text-sm font-medium text-white/80 hover:border-white/25 hover:bg-white/[0.12] transition-all duration-200 active:scale-[0.97] disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white/[0.08] border border-white/[0.15] text-sm font-medium text-white/90 hover:border-white/30 hover:bg-white/[0.14] transition-all duration-200 active:scale-[0.97] disabled:opacity-50"
               >
                 {generatingFor === name ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
-                  <Sparkles className="w-3.5 h-3.5 text-white/40" />
+                  <Sparkles className="w-3.5 h-3.5 text-white/50" />
                 )}
                 {name}
               </button>
