@@ -44,21 +44,17 @@ const GENDER_CONFIG: Record<string, { shape: 'circle' | 'rect' | 'diamond'; fill
   prefer_not_to_say: { shape: 'rect',    fill: 'hsl(0 0% 94%)',    stroke: 'hsl(0 0% 50%)',    label: 'Unspecified' },
 };
 
-// Spacing constants
 const NODE_GAP = 24;
 const LEVEL_GAP = 140;
 const PAD_X = 100;
 const PAD_Y = 70;
-
-const NODE_H = 48;         // rect height
-const NODE_MIN_W = 80;     // minimum rect width
-const NODE_CHAR_W = 7;     // approx px per char
-const YOU_EXTRA = 6;       // extra size for "You" node
-
-// Circle sizing: tight to text
-const CIRCLE_PAD = 12;     // padding around text inside circle
-const CIRCLE_MIN_R = 22;   // minimum radius
-const CIRCLE_CHAR_W = 3.8; // approx half-width per char for radius calc
+const NODE_H = 48;
+const NODE_MIN_W = 80;
+const NODE_CHAR_W = 7;
+const YOU_EXTRA = 6;
+const CIRCLE_PAD = 12;
+const CIRCLE_MIN_R = 22;
+const CIRCLE_CHAR_W = 3.8;
 
 function measureNodeW(name: string, isYou?: boolean): number {
   const label = isYou ? 'You' : name;
@@ -68,7 +64,6 @@ function measureNodeW(name: string, isYou?: boolean): number {
 
 function measureNodeR(name: string, isYou?: boolean): number {
   const label = isYou ? 'You' : name;
-  // Radius sized to fit text: half the text width + padding, but never smaller than min
   const textBasedR = label.length * CIRCLE_CHAR_W + CIRCLE_PAD;
   return Math.max(CIRCLE_MIN_R, textBasedR) + (isYou ? 3 : 0);
 }
@@ -90,9 +85,22 @@ interface TNode {
 }
 interface NPos { x: number; y: number; node: TNode; }
 
-/* ─── Overlap-free Layout ─── */
+/* ─── Genealogical Layout ─── */
 
-function computeLayout(members: any[], myName: string, myUsername: string, myGender: string) {
+interface LayoutResult {
+  positions: NPos[];
+  canvasW: number;
+  canvasH: number;
+  sortedGens: number[];
+  couples: { a: NPos; b: NPos }[];
+  parentChildLinks: { parentMidX: number; parentY: number; childX: number; childY: number; childNode: TNode }[];
+  siblingGroups: { nodes: NPos[]; parentY: number }[];
+  nodeWidths: Map<string, number>;
+  genGroups: Map<number, TNode[]>;
+  miscNodes: NPos[]; // nodes not covered by genealogical links
+}
+
+function computeLayout(members: any[], myName: string, myUsername: string, myGender: string): LayoutResult {
   const nodes: TNode[] = [
     { id: 'you', name: myName, username: myUsername, gender: myGender, relationship: 'self', generation: 0, isYou: true },
     ...members.map((m: any) => ({
@@ -115,19 +123,6 @@ function computeLayout(members: any[], myName: string, myUsername: string, myGen
   }
   const sortedGens = [...genGroups.keys()].sort((a, b) => a - b);
 
-  const orderedGroups = new Map<number, TNode[]>();
-  for (const gen of sortedGens) {
-    const group = genGroups.get(gen)!;
-    if (gen === 0) {
-      const you = group.filter(n => n.isYou);
-      const spouses = group.filter(n => n.relationship === 'spouse');
-      const rest = group.filter(n => !n.isYou && n.relationship !== 'spouse');
-      orderedGroups.set(gen, [...you, ...spouses, ...rest]);
-    } else {
-      orderedGroups.set(gen, group);
-    }
-  }
-
   const nodeWidths = new Map<string, number>();
   for (const n of nodes) {
     const gc = getGender(n.gender);
@@ -138,12 +133,76 @@ function computeLayout(members: any[], myName: string, myUsername: string, myGen
     }
   }
 
-  const positions: NPos[] = [];
-  let maxRowW = 500;
+  // --- Group into "units": couples side-by-side, singles alone ---
+  type Unit = { type: 'couple'; nodes: TNode[] } | { type: 'single'; node: TNode };
 
+  function buildUnits(gen: number): Unit[] {
+    const group = genGroups.get(gen) || [];
+    const units: Unit[] = [];
+    const used = new Set<string>();
+
+    if (gen === 0) {
+      const you = group.find(n => n.isYou);
+      const spouses = group.filter(n => n.relationship === 'spouse');
+      if (you && spouses.length > 0) {
+        used.add(you.id);
+        spouses.forEach(s => used.add(s.id));
+        units.push({ type: 'couple', nodes: [you, ...spouses] });
+      } else if (you) {
+        used.add(you.id);
+        units.push({ type: 'single', node: you });
+      }
+    }
+
+    if (gen === -1) {
+      const parents = group.filter(n => n.relationship === 'parent' && !used.has(n.id));
+      if (parents.length >= 2) {
+        parents.forEach(p => used.add(p.id));
+        units.push({ type: 'couple', nodes: parents });
+      } else if (parents.length === 1) {
+        used.add(parents[0].id);
+        units.push({ type: 'single', node: parents[0] });
+      }
+    }
+
+    if (gen === -2) {
+      const gps = group.filter(n => n.relationship === 'grandparent' && !used.has(n.id));
+      for (let i = 0; i < gps.length; i += 2) {
+        if (i + 1 < gps.length) {
+          used.add(gps[i].id); used.add(gps[i + 1].id);
+          units.push({ type: 'couple', nodes: [gps[i], gps[i + 1]] });
+        } else {
+          used.add(gps[i].id);
+          units.push({ type: 'single', node: gps[i] });
+        }
+      }
+    }
+
+    for (const n of group) {
+      if (!used.has(n.id)) units.push({ type: 'single', node: n });
+    }
+    return units;
+  }
+
+  const COUPLE_GAP = 28;
+  const UNIT_GAP = 48;
+
+  const positions: NPos[] = [];
+  const couples: { a: NPos; b: NPos }[] = [];
+
+  let maxRowW = 400;
   for (const gen of sortedGens) {
-    const ordered = orderedGroups.get(gen)!;
-    const rowW = ordered.reduce((sum, n) => sum + nodeWidths.get(n.id)!, 0) + (ordered.length - 1) * NODE_GAP;
+    const units = buildUnits(gen);
+    let rowW = 0;
+    for (let i = 0; i < units.length; i++) {
+      const u = units[i];
+      if (u.type === 'couple') {
+        rowW += u.nodes.reduce((s, n) => s + nodeWidths.get(n.id)!, 0) + (u.nodes.length - 1) * COUPLE_GAP;
+      } else {
+        rowW += nodeWidths.get(u.node.id)!;
+      }
+      if (i < units.length - 1) rowW += UNIT_GAP;
+    }
     if (rowW > maxRowW) maxRowW = rowW;
   }
 
@@ -152,32 +211,136 @@ function computeLayout(members: any[], myName: string, myUsername: string, myGen
 
   for (let gi = 0; gi < sortedGens.length; gi++) {
     const gen = sortedGens[gi];
-    const ordered = orderedGroups.get(gen)!;
+    const units = buildUnits(gen);
     const y = PAD_Y + gi * LEVEL_GAP;
-    const rowW = ordered.reduce((sum, n) => sum + nodeWidths.get(n.id)!, 0) + (ordered.length - 1) * NODE_GAP;
-    let curX = centerX - rowW / 2;
 
-    for (const node of ordered) {
-      const nw = nodeWidths.get(node.id)!;
-      positions.push({ x: curX + nw / 2, y, node });
-      curX += nw + NODE_GAP;
+    let rowW = 0;
+    const unitWidths: number[] = [];
+    for (let i = 0; i < units.length; i++) {
+      const u = units[i];
+      let uw = 0;
+      if (u.type === 'couple') {
+        uw = u.nodes.reduce((s, n) => s + nodeWidths.get(n.id)!, 0) + (u.nodes.length - 1) * COUPLE_GAP;
+      } else {
+        uw = nodeWidths.get(u.node.id)!;
+      }
+      unitWidths.push(uw);
+      rowW += uw;
+      if (i < units.length - 1) rowW += UNIT_GAP;
+    }
+
+    let curX = centerX - rowW / 2;
+    for (let i = 0; i < units.length; i++) {
+      const u = units[i];
+      const uw = unitWidths[i];
+
+      if (u.type === 'couple') {
+        let cx = curX;
+        const couplePos: NPos[] = [];
+        for (const n of u.nodes) {
+          const nw = nodeWidths.get(n.id)!;
+          const pos: NPos = { x: cx + nw / 2, y, node: n };
+          positions.push(pos);
+          couplePos.push(pos);
+          cx += nw + COUPLE_GAP;
+        }
+        for (let j = 0; j < couplePos.length - 1; j++) {
+          couples.push({ a: couplePos[j], b: couplePos[j + 1] });
+        }
+      } else {
+        const nw = nodeWidths.get(u.node.id)!;
+        positions.push({ x: curX + nw / 2, y, node: u.node });
+      }
+      curX += uw + UNIT_GAP;
     }
   }
 
+  // Adjust bounds
   const minX = Math.min(...positions.map(p => p.x - nodeWidths.get(p.node.id)! / 2));
   if (minX < PAD_X) {
     const shift = PAD_X - minX;
     for (const p of positions) p.x += shift;
   }
-
   const maxX = Math.max(...positions.map(p => p.x + nodeWidths.get(p.node.id)! / 2));
   const finalCanvasW = Math.max(canvasW, maxX + PAD_X);
   const canvasH = PAD_Y * 2 + sortedGens.length * LEVEL_GAP;
 
-  return { positions, canvasW: finalCanvasW, canvasH, sortedGens, genGroups: orderedGroups, nodeWidths };
+  // --- Build genealogical links ---
+  const parentChildLinks: LayoutResult['parentChildLinks'] = [];
+  const siblingGroups: LayoutResult['siblingGroups'] = [];
+  const posMap = new Map<string, NPos>();
+  for (const p of positions) posMap.set(p.node.id, p);
+  const youPos = posMap.get('you')!;
+
+  const linkedIds = new Set<string>(['you']);
+
+  const parentPositions = positions.filter(p => p.node.relationship === 'parent');
+  const childPositions = positions.filter(p => p.node.relationship === 'child');
+  const siblingPositions = positions.filter(p => p.node.relationship === 'sibling');
+  const spousePositions = positions.filter(p => p.node.relationship === 'spouse');
+  const grandparentPositions = positions.filter(p => p.node.relationship === 'grandparent');
+  const grandchildPositions = positions.filter(p => p.node.relationship === 'grandchild');
+
+  spousePositions.forEach(p => linkedIds.add(p.node.id));
+
+  // Parents → You (+ siblings)
+  if (parentPositions.length > 0) {
+    const parentMidX = parentPositions.length >= 2
+      ? (parentPositions[0].x + parentPositions[1].x) / 2
+      : parentPositions[0].x;
+    const parentY = parentPositions[0].y;
+    parentPositions.forEach(p => linkedIds.add(p.node.id));
+
+    parentChildLinks.push({ parentMidX, parentY, childX: youPos.x, childY: youPos.y, childNode: youPos.node });
+    for (const sib of siblingPositions) {
+      parentChildLinks.push({ parentMidX, parentY, childX: sib.x, childY: sib.y, childNode: sib.node });
+      linkedIds.add(sib.node.id);
+    }
+    if (siblingPositions.length > 0) {
+      siblingGroups.push({ nodes: [youPos, ...siblingPositions], parentY });
+    }
+  }
+
+  // You (+ spouse) → Children
+  if (childPositions.length > 0) {
+    const youMidX = spousePositions.length > 0 ? (youPos.x + spousePositions[0].x) / 2 : youPos.x;
+    for (const child of childPositions) {
+      parentChildLinks.push({ parentMidX: youMidX, parentY: youPos.y, childX: child.x, childY: child.y, childNode: child.node });
+      linkedIds.add(child.node.id);
+    }
+    if (childPositions.length > 1) {
+      siblingGroups.push({ nodes: childPositions, parentY: youPos.y });
+    }
+  }
+
+  // Grandparents → Parents
+  if (grandparentPositions.length > 0 && parentPositions.length > 0) {
+    const gpMidX = grandparentPositions.length >= 2
+      ? (grandparentPositions[0].x + grandparentPositions[1].x) / 2
+      : grandparentPositions[0].x;
+    const gpY = grandparentPositions[0].y;
+    grandparentPositions.forEach(p => linkedIds.add(p.node.id));
+    for (const parent of parentPositions) {
+      parentChildLinks.push({ parentMidX: gpMidX, parentY: gpY, childX: parent.x, childY: parent.y, childNode: parent.node });
+    }
+  }
+
+  // Children → Grandchildren
+  if (grandchildPositions.length > 0 && childPositions.length > 0) {
+    const proxyParent = childPositions[0];
+    for (const gc of grandchildPositions) {
+      parentChildLinks.push({ parentMidX: proxyParent.x, parentY: proxyParent.y, childX: gc.x, childY: gc.y, childNode: gc.node });
+      linkedIds.add(gc.node.id);
+    }
+  }
+
+  // Misc nodes: uncle/aunt, nephew/niece, cousin, other — not connected by genealogical lines
+  const miscNodes = positions.filter(p => !linkedIds.has(p.node.id));
+
+  return { positions, canvasW: finalCanvasW, canvasH, sortedGens, couples, parentChildLinks, siblingGroups, nodeWidths, genGroups, miscNodes };
 }
 
-/* ─── Node shape dimensions helper ─── */
+/* ─── Node bounds ─── */
 
 function getNodeBounds(node: TNode) {
   const gc = getGender(node.gender);
@@ -202,13 +365,11 @@ function NodeShape({ x, y, node }: { x: number; y: number; node: TNode }) {
   const h = NODE_H + (isYou ? YOU_EXTRA : 0);
   const r = measureNodeR(node.name, isYou);
 
-  // For circles: compute font sizes that fit within the circle
   const circleFontName = Math.min(9, Math.max(6.5, (r * 1.3) / Math.max(displayName.length, 3)));
   const circleFontIni = Math.min(13, r * 0.5);
 
   return (
     <g className="cursor-default">
-      {/* Subtle glow for "You" */}
       {isYou && gc.shape === 'rect' && (
         <rect x={x - w / 2 - 3} y={y - h / 2 - 3} width={w + 6} height={h + 6} rx={13}
           fill="none" stroke={gc.stroke} strokeWidth={1} opacity={0.12}>
@@ -228,7 +389,6 @@ function NodeShape({ x, y, node }: { x: number; y: number; node: TNode }) {
         </polygon>
       )}
 
-      {/* Shape */}
       {gc.shape === 'rect' && (
         <rect x={x - w / 2} y={y - h / 2} width={w} height={h} rx={8}
           fill={gc.fill} stroke={gc.stroke} strokeWidth={strokeW} />
@@ -242,7 +402,6 @@ function NodeShape({ x, y, node }: { x: number; y: number; node: TNode }) {
           fill={gc.fill} stroke={gc.stroke} strokeWidth={strokeW} />
       )}
 
-      {/* Initials */}
       {gc.shape === 'circle' ? (
         <text x={x} y={y - 4} textAnchor="middle" dominantBaseline="central"
           fill={gc.stroke} fontSize={circleFontIni} fontWeight="700"
@@ -257,7 +416,6 @@ function NodeShape({ x, y, node }: { x: number; y: number; node: TNode }) {
         </text>
       )}
 
-      {/* Full Name */}
       {gc.shape === 'circle' ? (
         <text x={x} y={y + circleFontIni * 0.6 + 2} textAnchor="middle" dominantBaseline="central"
           fill={gc.stroke} fontSize={circleFontName} fontWeight="500" fontFamily="var(--font-body)" opacity={0.85}>
@@ -270,7 +428,6 @@ function NodeShape({ x, y, node }: { x: number; y: number; node: TNode }) {
         </text>
       )}
 
-      {/* Username — above shape for "You", below for others */}
       {node.username && isYou && (
         <text x={x} y={y - getNodeBounds(node).halfH - 8} textAnchor="middle"
           fill="hsl(var(--muted-foreground))" fontSize="8.5" fontWeight="600" fontFamily="var(--font-body)">
@@ -287,32 +444,71 @@ function NodeShape({ x, y, node }: { x: number; y: number; node: TNode }) {
   );
 }
 
-/* ─── Connection Lines ─── */
+/* ─── Genealogical Connection Lines ─── */
 
-function ConnectionLine({ from, to, relationship }: { from: NPos; to: NPos; relationship: string }) {
+function CoupleConnector({ a, b }: { a: NPos; b: NPos }) {
+  const aB = getNodeBounds(a.node);
+  const bB = getNodeBounds(b.node);
+  const x1 = a.x + aB.halfW + 2;
+  const x2 = b.x - bB.halfW - 2;
+  const y = a.y;
+  return (
+    <g>
+      <line x1={x1} y1={y - 2} x2={x2} y2={y - 2}
+        stroke="hsl(340 45% 50%)" strokeWidth={1.5} opacity={0.5} />
+      <line x1={x1} y1={y + 2} x2={x2} y2={y + 2}
+        stroke="hsl(340 45% 50%)" strokeWidth={1.5} opacity={0.5} />
+    </g>
+  );
+}
+
+function ParentChildLine({ parentMidX, parentY, childX, childY, childNode }: {
+  parentMidX: number; parentY: number; childX: number; childY: number; childNode: TNode;
+}) {
+  const parentHalfH = 24;
+  const childB = getNodeBounds(childNode);
+  const y1 = parentY + parentHalfH + 2;
+  const y2 = childY - childB.halfH - 2;
+  const midY = (y1 + y2) / 2;
+
+  return (
+    <g>
+      <line x1={parentMidX} y1={y1} x2={parentMidX} y2={midY}
+        stroke="hsl(var(--teal-500))" strokeWidth={1.5} opacity={0.4} />
+      <line x1={parentMidX} y1={midY} x2={childX} y2={midY}
+        stroke="hsl(var(--teal-500))" strokeWidth={1.5} opacity={0.4} />
+      <line x1={childX} y1={midY} x2={childX} y2={y2}
+        stroke="hsl(var(--teal-500))" strokeWidth={1.5} opacity={0.4} />
+    </g>
+  );
+}
+
+function SiblingBracket({ nodes, parentY }: { nodes: NPos[]; parentY: number }) {
+  if (nodes.length < 2) return null;
+  const sorted = [...nodes].sort((a, b) => a.x - b.x);
+  const parentHalfH = 24;
+  const childB = getNodeBounds(sorted[0].node);
+  const y1 = parentY + parentHalfH + 2;
+  const y2 = sorted[0].y - childB.halfH - 2;
+  const midY = (y1 + y2) / 2;
+
+  return (
+    <line x1={sorted[0].x} y1={midY} x2={sorted[sorted.length - 1].x} y2={midY}
+      stroke="hsl(var(--teal-500))" strokeWidth={1.5} opacity={0.35} />
+  );
+}
+
+function MiscConnectionLine({ from, to, relationship }: { from: NPos; to: NPos; relationship: string }) {
   const rel = getRelConfig(relationship);
-  const dy = to.y - from.y;
-  const dx = to.x - from.x;
   const fromB = getNodeBounds(from.node);
   const toB = getNodeBounds(to.node);
+  const dy = to.y - from.y;
+  const dx = to.x - from.x;
 
   if (Math.abs(dy) < 10) {
-    const isSpouse = relationship === 'spouse';
     const dir = dx > 0 ? 1 : -1;
     const x1 = from.x + dir * (fromB.halfW + 3);
     const x2 = to.x - dir * (toB.halfW + 3);
-
-    if (isSpouse) {
-      return (
-        <g>
-          <line x1={x1} y1={from.y - 3} x2={x2} y2={to.y - 3}
-            stroke={rel.color} strokeWidth={1.5} opacity={0.55} />
-          <line x1={x1} y1={from.y + 3} x2={x2} y2={to.y + 3}
-            stroke={rel.color} strokeWidth={1.5} opacity={0.55} />
-        </g>
-      );
-    }
-
     const arcY = from.y - 36;
     return (
       <g>
@@ -361,7 +557,12 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
   const dragRef = useRef({ startX: 0, startY: 0, panX: 0, panY: 0 });
   const [collapsedGens, setCollapsedGens] = useState<Set<number>>(new Set());
 
-  const { positions, canvasW, canvasH, sortedGens, nodeWidths } = computeLayout(members, myName, myUsername, myGender);
+  const layout = computeLayout(members, myName, myUsername, myGender);
+  const { positions, canvasW, canvasH, sortedGens, couples, parentChildLinks, siblingGroups, miscNodes, nodeWidths } = layout;
+
+  const posMap = new Map<string, NPos>();
+  for (const p of positions) posMap.set(p.node.id, p);
+  const youPos = posMap.get('you')!;
 
   useEffect(() => {
     if (!containerRef.current || positions.length === 0) return;
@@ -388,18 +589,8 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
   }, [dragging]);
 
   const handlePointerUp = useCallback(() => setDragging(false), []);
-
   const handleZoomIn = useCallback(() => setZoom(z => Math.min(z + 0.15, 2.5)), []);
   const handleZoomOut = useCallback(() => setZoom(z => Math.max(z - 0.15, 0.3)), []);
-  const handleFit = useCallback(() => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const sx = (rect.width - 16) / canvasW;
-    const sy = (rect.height - 16) / canvasH;
-    const s = Math.min(sx, sy, 1.15);
-    setPan({ x: (rect.width - canvasW * s) / 2, y: Math.max(8, (rect.height - canvasH * s) / 2) });
-    setZoom(s);
-  }, [canvasW, canvasH]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -418,7 +609,6 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
     });
   };
 
-  const youPos = positions.find(p => p.node.isYou)!;
   const visiblePositions = positions.filter(p => !collapsedGens.has(p.node.generation));
 
   const usedRels = [...new Set(members.map((m: any) => m.relationship || 'other'))];
@@ -454,6 +644,7 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
               </filter>
             </defs>
 
+            {/* Generation labels */}
             {sortedGens.map((gen, gi) => {
               const y = PAD_Y + gi * LEVEL_GAP;
               const isCollapsed = collapsedGens.has(gen);
@@ -470,10 +661,34 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
               );
             })}
 
-            {visiblePositions.filter(p => !p.node.isYou).map(p => (
-              <ConnectionLine key={`c-${p.node.id}`} from={youPos} to={p} relationship={p.node.relationship} />
+            {/* Couple connectors (horizontal double lines) */}
+            {couples.map((c, i) => (
+              <CoupleConnector key={`couple-${i}`} a={c.a} b={c.b} />
             ))}
 
+            {/* Sibling brackets (horizontal bar connecting siblings at midpoint) */}
+            {siblingGroups.map((sg, i) => {
+              const visibleNodes = sg.nodes.filter(n => !collapsedGens.has(n.node.generation));
+              if (visibleNodes.length < 2) return null;
+              return <SiblingBracket key={`sib-${i}`} nodes={visibleNodes} parentY={sg.parentY} />;
+            })}
+
+            {/* Parent-child lines (vertical + horizontal right-angle connectors) */}
+            {parentChildLinks.map((link, i) => {
+              if (collapsedGens.has(link.childNode.generation)) return null;
+              return (
+                <ParentChildLine key={`pc-${i}`}
+                  parentMidX={link.parentMidX} parentY={link.parentY}
+                  childX={link.childX} childY={link.childY} childNode={link.childNode} />
+              );
+            })}
+
+            {/* Misc connections (cousin, uncle/aunt, etc.) — dashed lines to You */}
+            {miscNodes.filter(p => !collapsedGens.has(p.node.generation)).map(p => (
+              <MiscConnectionLine key={`misc-${p.node.id}`} from={youPos} to={p} relationship={p.node.relationship} />
+            ))}
+
+            {/* Nodes */}
             {visiblePositions.map((p, i) => {
               const tooltipText = p.node.note || p.node.bio || '';
               return (
