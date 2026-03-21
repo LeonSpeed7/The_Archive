@@ -88,25 +88,36 @@ export default function ARCameraTab() {
 
   const saveToDatabase = useMutation({
     mutationFn: async () => {
+      const table = archiveTarget === 'global' ? 'objects' : 'personal_objects';
+      const payload: any = {
+        name: objectName || aiResult?.name || 'Unknown Object',
+        description: userDescription || aiResult?.description || null,
+        history: aiResult?.history || null,
+        image_url: capturedImage,
+      };
+      if (archiveTarget === 'global') {
+        payload.created_by = user!.id;
+      } else {
+        payload.user_id = user!.id;
+      }
       const { data, error } = await supabase
-        .from('objects')
-        .insert({
-          name: objectName || aiResult?.name || 'Unknown Object',
-          description: userDescription || aiResult?.description || null,
-          history: aiResult?.history || null,
-          image_url: capturedImage,
-          created_by: user!.id,
-        })
+        .from(table)
+        .insert(payload)
         .select()
         .single();
       if (error) throw error;
       return data;
     },
     onSuccess: (data) => {
-      toast.success('Saved to the Global Archive!');
-      setSelectedObjectId(data.id);
+      const label = archiveTarget === 'global' ? 'Global Archive' : 'Personal Archive';
+      toast.success(`Saved to ${label}!`);
+      if (archiveTarget === 'global') {
+        setSelectedObjectId(data.id);
+      }
       queryClient.invalidateQueries({ queryKey: ['objects-search'] });
       queryClient.invalidateQueries({ queryKey: ['global-objects'] });
+      queryClient.invalidateQueries({ queryKey: ['personal-objects'] });
+      if (archiveTarget === 'personal') resetAll();
     },
     onError: (err: any) => toast.error(err.message),
   });
