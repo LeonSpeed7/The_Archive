@@ -199,8 +199,7 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
-    const factor = e.deltaY > 0 ? 0.92 : 1.08;
-    setZoom(z => Math.max(0.25, Math.min(3, z * factor)));
+    // Zoom disabled
   }, []);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
