@@ -17,6 +17,7 @@ interface TimelineEntry {
   year: string;
   name: string;
   description: string;
+  relatedImages?: { id: string; name: string; image_url: string }[];
 }
 
 const TIMELINE_COLORS = [
