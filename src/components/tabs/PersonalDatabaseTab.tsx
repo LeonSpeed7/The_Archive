@@ -46,7 +46,7 @@ export default function PersonalDatabaseTab() {
   });
 
   if (viewMode === 'detail' && selectedObjectId) {
-    return <ObjectDetail objectId={selectedObjectId} onBack={() => { setViewMode('personal'); setSelectedObjectId(null); }} />;
+    return <ObjectDetail objectId={selectedObjectId} source="personal" onBack={() => { setViewMode('personal'); setSelectedObjectId(null); }} />;
   }
 
   return (
