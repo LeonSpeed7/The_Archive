@@ -141,6 +141,7 @@ function SettingsPanel({ profile, userId, onBack }: { profile: any; userId: stri
   const fileRef = useRef<HTMLInputElement>(null);
   const [fullName, setFullName] = useState(profile.full_name || '');
   const [username, setUsername] = useState(profile.username || '');
+  const [gender, setGender] = useState((profile as any).gender || 'prefer_not_to_say');
   const [uploading, setUploading] = useState(false);
 
   // Avatar upload
@@ -193,7 +194,8 @@ function SettingsPanel({ profile, userId, onBack }: { profile: any; userId: stri
       if (!trimmedUser) throw new Error('Username is required');
       if (!/^[a-z0-9_]{3,30}$/.test(trimmedUser)) throw new Error('Username: 3–30 chars (letters, numbers, _)');
       const { error } = await supabase.from('profiles')
-        .update({ full_name: trimmedName, username: trimmedUser, display_name: trimmedName })
+        .update({ full_name: trimmedName, username: trimmedUser, display_name: trimmedName, gender } as any)
+        .eq('user_id', userId);
         .eq('user_id', userId);
       if (error) {
         if (error.message.includes('duplicate') || error.message.includes('unique')) throw new Error('Username taken');
@@ -272,6 +274,19 @@ function SettingsPanel({ profile, userId, onBack }: { profile: any; userId: stri
               className="w-full h-8 px-2.5 text-sm rounded-md border border-border bg-background text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-ring"
               maxLength={30}
             />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Gender</label>
+            <select
+              value={gender}
+              onChange={(e) => setGender(e.target.value)}
+              className="w-full h-8 px-2 text-sm rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+              <option value="prefer_not_to_say">Prefer not to say</option>
+            </select>
           </div>
           <Button size="sm" onClick={() => saveProfile.mutate()} disabled={saveProfile.isPending} className="w-full text-xs">
             {saveProfile.isPending ? 'Saving…' : 'Save Changes'}

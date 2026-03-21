@@ -23,7 +23,7 @@ export function useConnections() {
       if (connectedIds.length === 0) return [];
       const { data: profiles, error: pErr } = await supabase
         .from('profiles')
-        .select('user_id, display_name, full_name, username')
+        .select('user_id, display_name, full_name, username, gender')
         .in('user_id', connectedIds);
       if (pErr) throw pErr;
       return data.map(c => {
@@ -34,6 +34,7 @@ export function useConnections() {
           connected_user_id: otherId,
           connected_name: profile?.full_name || profile?.display_name || 'Unknown',
           connected_username: profile?.username || '',
+          connected_gender: (profile as any)?.gender || 'prefer_not_to_say',
           relationship: (c as any).relationship || 'other',
         };
       });
