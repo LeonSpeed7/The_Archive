@@ -654,9 +654,10 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
             })}
 
             {/* Couple connectors (horizontal double lines) */}
-            {couples.map((c, i) => (
-              <CoupleConnector key={`couple-${i}`} a={c.a} b={c.b} />
-            ))}
+            {couples.map((c, i) => {
+              if (collapsedGens.has(c.a.node.generation) || collapsedGens.has(c.b.node.generation)) return null;
+              return <CoupleConnector key={`couple-${i}`} a={c.a} b={c.b} />;
+            })}
 
             {/* Sibling brackets (horizontal bar connecting siblings at midpoint) */}
             {siblingGroups.map((sg, i) => {
@@ -667,7 +668,12 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
 
             {/* Parent-child lines (vertical + horizontal right-angle connectors) */}
             {parentChildLinks.map((link, i) => {
+              // Hide line if either the parent or child generation is collapsed
+              const parentGen = sortedGens.find((_, gi) => PAD_Y + gi * LEVEL_GAP === link.parentY);
               if (collapsedGens.has(link.childNode.generation)) return null;
+              // Also check if parent generation is collapsed by checking if parentY's gen is collapsed
+              const parentGenNum = positions.find(p => Math.abs(p.y - link.parentY) < 5 && !p.node.isYou)?.node.generation;
+              if (parentGenNum !== undefined && collapsedGens.has(parentGenNum)) return null;
               return (
                 <ParentChildLine key={`pc-${i}`}
                   parentMidX={link.parentMidX} parentY={link.parentY}

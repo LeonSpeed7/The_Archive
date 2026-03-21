@@ -9,9 +9,62 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { imageBase64 } = await req.json();
+    const body = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    // History mode: generate brief histories for named items
+    if (body.historyMode && body.itemNames) {
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-lite",
+          messages: [
+            {
+              role: "system",
+              content: `You are a knowledgeable historian and object expert. Given a list of object names detected by a camera, provide a brief but interesting historical background for each. Include origin, cultural significance, or evolution over time.
+
+Respond ONLY with valid JSON: {"histories": [{"name":"...","history":"2-3 sentence history"}]}
+Keep histories concise but informative and fascinating.`,
+            },
+            {
+              role: "user",
+              content: `Provide brief histories for these objects detected in a scene: ${body.itemNames}`,
+            },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const t = await response.text();
+        console.error("AI gateway error:", response.status, t);
+        throw new Error("History generation failed");
+      }
+
+      const data = await response.json();
+      const raw = data.choices?.[0]?.message?.content ?? "";
+      let jsonStr = raw;
+      const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) jsonStr = jsonMatch[1].trim();
+
+      let result;
+      try {
+        result = JSON.parse(jsonStr);
+      } catch {
+        result = { histories: [] };
+      }
+
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Standard mode: image analysis
+    const { imageBase64 } = body;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

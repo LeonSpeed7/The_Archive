@@ -1,6 +1,6 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { ScanEye, Play, Square, Loader2, AlertCircle } from 'lucide-react';
+import { ScanEye, Play, Square, Loader2, AlertCircle, History, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -11,7 +11,14 @@ interface DetectedItem {
   brief: string;
 }
 
+interface HistoryEntry {
+  name: string;
+  history: string;
+  confidence: 'high' | 'medium' | 'low';
+}
+
 const SCAN_INTERVAL_MS = 4000;
+const HISTORY_TRIGGER_SCANS = 5;
 
 const confidenceColor: Record<string, string> = {
   high: 'hsl(var(--teal-500))',
@@ -32,6 +39,13 @@ export default function LiveSenseTab() {
   const [error, setError] = useState<string | null>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
 
+  // History summary state
+  const [scanCount, setScanCount] = useState(0);
+  const [allDetectedNames, setAllDetectedNames] = useState<Map<string, { count: number; confidence: string; brief: string }>>(new Map());
+  const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [historyGenerated, setHistoryGenerated] = useState(false);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -41,6 +55,10 @@ export default function LiveSenseTab() {
   const startCamera = useCallback(async () => {
     try {
       setError(null);
+      setScanCount(0);
+      setAllDetectedNames(new Map());
+      setHistoryEntries([]);
+      setHistoryGenerated(false);
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
       });
@@ -72,6 +90,35 @@ export default function LiveSenseTab() {
     setDetectedItems([]);
   }, [cameraStream]);
 
+  // Generate history summaries for top items
+  const generateHistorySummary = useCallback(async (topItems: { name: string; confidence: string }[]) => {
+    setIsLoadingHistory(true);
+    try {
+      const itemNames = topItems.map(i => i.name).join(', ');
+      const { data, error: fnError } = await supabase.functions.invoke('live-sense', {
+        body: {
+          historyMode: true,
+          itemNames,
+        },
+      });
+      if (fnError) throw fnError;
+      if (data?.error) throw new Error(data.error);
+      if (data?.histories && Array.isArray(data.histories)) {
+        setHistoryEntries(data.histories.map((h: any, i: number) => ({
+          name: h.name || topItems[i]?.name || 'Unknown',
+          history: h.history || 'No history available.',
+          confidence: (topItems[i]?.confidence as any) || 'medium',
+        })));
+      }
+      setHistoryGenerated(true);
+    } catch (err: any) {
+      console.error('History generation error:', err);
+      toast.error('Could not generate object histories.');
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, []);
+
   // Capture a frame and send to AI
   const captureAndAnalyze = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -91,11 +138,29 @@ export default function LiveSenseTab() {
       if (data?.error) throw new Error(data.error);
       if (data?.items && Array.isArray(data.items)) {
         setDetectedItems(data.items);
+        setScanCount(prev => {
+          const next = prev + 1;
+          return next;
+        });
+
+        // Track all detected names
+        setAllDetectedNames(prev => {
+          const updated = new Map(prev);
+          for (const item of data.items) {
+            const existing = updated.get(item.name);
+            if (existing) {
+              updated.set(item.name, { count: existing.count + 1, confidence: item.confidence, brief: item.brief });
+            } else {
+              updated.set(item.name, { count: 1, confidence: item.confidence, brief: item.brief });
+            }
+          }
+          return updated;
+        });
       }
     } catch (err: any) {
       console.error('Live sense error:', err);
       if (err?.message?.includes('Rate limited')) {
-        // Skip silently, will retry next interval
+        // Skip silently
       } else if (err?.message?.includes('credits')) {
         toast.error('AI credits exhausted.');
         stopSensing();
@@ -105,10 +170,20 @@ export default function LiveSenseTab() {
     }
   }, [stopSensing]);
 
+  // Trigger history generation after enough scans
+  useEffect(() => {
+    if (scanCount >= HISTORY_TRIGGER_SCANS && !historyGenerated && !isLoadingHistory && allDetectedNames.size > 0) {
+      const sorted = [...allDetectedNames.entries()]
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 5);
+      const topItems = sorted.map(([name, data]) => ({ name, confidence: data.confidence }));
+      generateHistorySummary(topItems);
+    }
+  }, [scanCount, historyGenerated, isLoadingHistory, allDetectedNames, generateHistorySummary]);
+
   // Start periodic scanning
   useEffect(() => {
     if (isActive && cameraStream) {
-      // Initial scan after a short delay for camera to stabilize
       const timeout = setTimeout(() => captureAndAnalyze(), 1200);
       intervalRef.current = setInterval(captureAndAnalyze, SCAN_INTERVAL_MS);
       return () => {
@@ -125,6 +200,8 @@ export default function LiveSenseTab() {
       cameraStream?.getTracks().forEach((t) => t.stop());
     };
   }, [cameraStream]);
+
+  const progressPercent = Math.min((scanCount / HISTORY_TRIGGER_SCANS) * 100, 100);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -185,6 +262,11 @@ export default function LiveSenseTab() {
           <Button onClick={startCamera} size="lg" className="rounded-xl h-12 px-8 text-white" style={{ backgroundColor: 'hsl(262 60% 50%)' }}>
             <Play className="w-4 h-4 mr-2" /> Start Sensing
           </Button>
+
+          {/* Show previous history if available */}
+          {historyEntries.length > 0 && (
+            <HistorySummarySection entries={historyEntries} />
+          )}
         </div>
       )}
 
@@ -240,6 +322,28 @@ export default function LiveSenseTab() {
             </div>
           </div>
 
+          {/* History progress bar */}
+          {!historyGenerated && (
+            <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <History className="w-4 h-4" />
+                  <span>Building scene summary…</span>
+                </div>
+                <span className="text-xs tabular-nums text-muted-foreground">{scanCount}/{HISTORY_TRIGGER_SCANS} scans</span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500 ease-out"
+                  style={{
+                    width: `${progressPercent}%`,
+                    background: 'linear-gradient(90deg, hsl(262 60% 50%), hsl(262 70% 60%))',
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Stop button */}
           <Button onClick={stopSensing} variant="outline" className="w-full rounded-xl h-11 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground">
             <Square className="w-4 h-4 mr-2" /> Stop Sensing
@@ -276,6 +380,19 @@ export default function LiveSenseTab() {
             </div>
           )}
 
+          {/* History loading */}
+          {isLoadingHistory && (
+            <div className="rounded-2xl border border-border bg-card p-6 text-center space-y-3">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto" style={{ color: 'hsl(262 60% 50%)' }} />
+              <p className="text-sm text-muted-foreground">Generating histories for detected objects…</p>
+            </div>
+          )}
+
+          {/* History summary section */}
+          {historyEntries.length > 0 && (
+            <HistorySummarySection entries={historyEntries} />
+          )}
+
           {/* Empty state while waiting for first result */}
           {detectedItems.length === 0 && isScanning && (
             <div className="text-center py-8 text-muted-foreground text-sm">
@@ -285,6 +402,32 @@ export default function LiveSenseTab() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function HistorySummarySection({ entries }: { entries: HistoryEntry[] }) {
+  return (
+    <div className="rounded-2xl overflow-hidden border border-border animate-fade-in">
+      <div className="px-5 py-3 flex items-center gap-2" style={{
+        background: 'linear-gradient(135deg, hsl(262 50% 25%) 0%, hsl(262 60% 35%) 100%)',
+      }}>
+        <BookOpen className="w-4 h-4 text-white/80" />
+        <h3 className="text-sm font-semibold text-white">Scene Summary & Histories</h3>
+      </div>
+      <div className="divide-y divide-border">
+        {entries.map((entry, i) => (
+          <div key={`history-${i}`} className="px-5 py-4 bg-card space-y-1.5">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: confidenceColor[entry.confidence] || confidenceColor.medium }} />
+              <h4 className="font-display font-semibold text-sm text-foreground">{entry.name}</h4>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed pl-4">
+              {entry.history}
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
