@@ -5,6 +5,7 @@ import GlobalDatabaseTab from '@/components/tabs/GlobalDatabaseTab';
 import PersonalDatabaseTab from '@/components/tabs/PersonalDatabaseTab';
 import FamilyTreeTab from '@/components/tabs/FamilyTreeTab';
 import ProfileMenu from '@/components/ProfileMenu';
+import GuidedExploration from '@/components/GuidedExploration';
 
 type Tab = 'camera' | 'personal' | 'database' | 'tree';
 
@@ -71,6 +72,9 @@ export default function Dashboard() {
           {activeTab === 'tree' && <FamilyTreeTab />}
         </div>
       </main>
+
+      {/* Guided Exploration */}
+      <GuidedExploration activeTab={activeTab} onNavigateTab={setActiveTab} />
     </div>
   );
 }

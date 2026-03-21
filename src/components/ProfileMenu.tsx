@@ -2,10 +2,11 @@ import { useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { LogOut, Settings, Shield, Camera, User, Accessibility, ChevronRight } from 'lucide-react';
+import { LogOut, Settings, Shield, Camera, User, Accessibility, ChevronRight, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
+import { useToggleGuidedExploration } from '@/components/GuidedExploration';
 
 function useFullProfile() {
   const { user } = useAuth();
@@ -36,6 +37,7 @@ export default function ProfileMenu() {
   const { data: profile } = useFullProfile();
   const [open, setOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAccessibility, setShowAccessibility] = useState(false);
 
   if (!user || !profile) return null;
 
@@ -44,20 +46,22 @@ export default function ProfileMenu() {
   const initials = displayName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setShowSettings(false); setShowAccessibility(false); } }}>
       <PopoverTrigger asChild>
-        <button className="relative w-9 h-9 rounded-full overflow-hidden border-2 border-border hover:border-primary/50 transition-all duration-200 active:scale-95 flex-shrink-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+        <button className="relative w-9 h-9 rounded-full overflow-hidden border-2 border-white/20 hover:border-white/50 transition-all duration-200 active:scale-95 flex-shrink-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
           {avatarSrc ? (
             <img src={avatarSrc} alt={displayName} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold font-display">
+            <div className="w-full h-full flex items-center justify-center text-xs font-bold font-display" style={{ backgroundColor: 'hsl(var(--teal-500))', color: 'white' }}>
               {initials}
             </div>
           )}
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 p-0" sideOffset={8}>
-        {showSettings ? (
+        {showAccessibility ? (
+          <AccessibilityPanel profile={profile} userId={user.id} onBack={() => setShowAccessibility(false)} />
+        ) : showSettings ? (
           <SettingsPanel profile={profile} userId={user.id} onBack={() => setShowSettings(false)} />
         ) : (
           <MainMenu
@@ -69,6 +73,7 @@ export default function ProfileMenu() {
             initials={initials}
             onSignOut={() => { setOpen(false); signOut(); }}
             onOpenSettings={() => setShowSettings(true)}
+            onOpenAccessibility={() => setShowAccessibility(true)}
           />
         )}
       </PopoverContent>
@@ -78,21 +83,20 @@ export default function ProfileMenu() {
 
 /* ─── Main Menu ─── */
 function MainMenu({
-  profile, userId, email, avatarSrc, displayName, initials, onSignOut, onOpenSettings,
+  profile, userId, email, avatarSrc, displayName, initials, onSignOut, onOpenSettings, onOpenAccessibility,
 }: {
   profile: any; userId: string; email: string; avatarSrc: string | null;
-  displayName: string; initials: string; onSignOut: () => void; onOpenSettings: () => void;
+  displayName: string; initials: string; onSignOut: () => void; onOpenSettings: () => void; onOpenAccessibility: () => void;
 }) {
   return (
     <div>
-      {/* Profile summary */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 border-2 border-border">
             {avatarSrc ? (
               <img src={avatarSrc} alt={displayName} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold font-display">
+              <div className="w-full h-full flex items-center justify-center text-sm font-bold font-display" style={{ backgroundColor: 'hsl(var(--teal-500))', color: 'white' }}>
                 {initials}
               </div>
             )}
@@ -107,10 +111,9 @@ function MainMenu({
         </div>
       </div>
 
-      {/* Menu items */}
       <div className="p-1.5">
         <MenuButton icon={Settings} label="Account Settings" onClick={onOpenSettings} />
-        <MenuButton icon={Accessibility} label="Accessibility" onClick={() => toast.info('Accessibility settings coming soon')} />
+        <MenuButton icon={Accessibility} label="Accessibility" onClick={onOpenAccessibility} />
         <div className="my-1 border-t border-border" />
         <MenuButton icon={LogOut} label="Sign Out" onClick={onSignOut} destructive />
       </div>
@@ -135,6 +138,65 @@ function MenuButton({ icon: Icon, label, onClick, destructive }: { icon: any; la
   );
 }
 
+/* ─── Accessibility Panel ─── */
+function AccessibilityPanel({ profile, userId, onBack }: { profile: any; userId: string; onBack: () => void }) {
+  const queryClient = useQueryClient();
+  const guidedEnabled = (profile as any).guided_exploration ?? true;
+  const toggleMut = useToggleGuidedExploration();
+
+  const handleToggle = () => {
+    const newVal = !guidedEnabled;
+    toggleMut.mutate(newVal, {
+      onSuccess: () => {
+        toast.success(newVal ? 'Guided exploration enabled' : 'Guided exploration disabled');
+        queryClient.invalidateQueries({ queryKey: ['full-profile'] });
+      },
+    });
+  };
+
+  return (
+    <div>
+      <div className="p-3 border-b border-border flex items-center gap-2">
+        <button onClick={onBack} className="text-muted-foreground hover:text-foreground transition-colors">
+          <ChevronRight className="w-4 h-4 rotate-180" />
+        </button>
+        <h3 className="text-sm font-semibold text-foreground">Accessibility</h3>
+      </div>
+
+      <div className="p-4 space-y-5">
+        {/* Guided Exploration Toggle */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Eye className="w-4 h-4" style={{ color: 'hsl(var(--teal-500))' }} />
+            <span className="text-sm font-semibold text-foreground">Guided Exploration</span>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Show a step-by-step popup tour when you use the app. Helps new users understand each tab and feature.
+          </p>
+          <button
+            onClick={handleToggle}
+            disabled={toggleMut.isPending}
+            className="relative w-11 h-6 rounded-full transition-colors duration-200 active:scale-95"
+            style={{
+              backgroundColor: guidedEnabled ? 'hsl(var(--teal-cta))' : 'hsl(var(--teal-200))',
+            }}
+          >
+            <span
+              className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200"
+              style={{
+                transform: guidedEnabled ? 'translateX(20px)' : 'translateX(0px)',
+              }}
+            />
+          </button>
+          <p className="text-[11px] text-muted-foreground">
+            {guidedEnabled ? 'Popup tour is visible when you log in.' : 'Tour is hidden. Re-enable anytime.'}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Settings Panel ─── */
 function SettingsPanel({ profile, userId, onBack }: { profile: any; userId: string; onBack: () => void }) {
   const queryClient = useQueryClient();
@@ -144,16 +206,9 @@ function SettingsPanel({ profile, userId, onBack }: { profile: any; userId: stri
   const [gender, setGender] = useState((profile as any).gender || 'prefer_not_to_say');
   const [uploading, setUploading] = useState(false);
 
-  // Avatar upload
   const uploadAvatar = async (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Image must be under 2MB');
-      return;
-    }
+    if (!file.type.startsWith('image/')) { toast.error('Please select an image file'); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error('Image must be under 2MB'); return; }
     setUploading(true);
     try {
       const ext = file.name.split('.').pop();
@@ -222,14 +277,14 @@ function SettingsPanel({ profile, userId, onBack }: { profile: any; userId: stri
       </div>
 
       <div className="p-4 space-y-5">
-        {/* Avatar section */}
+        {/* Avatar */}
         <div className="flex items-center gap-4">
           <div className="relative group">
             <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-border">
               {avatarSrc ? (
                 <img src={avatarSrc} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full bg-primary flex items-center justify-center text-primary-foreground text-lg font-bold font-display">
+                <div className="w-full h-full flex items-center justify-center text-lg font-bold font-display" style={{ backgroundColor: 'hsl(var(--teal-500))', color: 'white' }}>
                   {initials}
                 </div>
               )}
@@ -292,7 +347,7 @@ function SettingsPanel({ profile, userId, onBack }: { profile: any; userId: stri
           </Button>
         </div>
 
-        {/* Safeword section */}
+        {/* Safeword */}
         <SafewordSection userId={userId} safeword={profile.safeword} />
       </div>
     </div>
@@ -329,7 +384,7 @@ function SafewordSection({ userId, safeword }: { userId: string; safeword: strin
   return (
     <div className="border-t border-border pt-4 space-y-2">
       <div className="flex items-center gap-2">
-        <Shield className="w-4 h-4 text-accent" />
+        <Shield className="w-4 h-4" style={{ color: 'hsl(var(--teal-cta))' }} />
         <span className="text-xs font-semibold text-foreground">Safeword</span>
       </div>
       {safeword && !editing ? (
@@ -340,7 +395,7 @@ function SafewordSection({ userId, safeword }: { userId: string; safeword: strin
           <button onClick={() => setVisible(!visible)} className="text-muted-foreground hover:text-foreground text-xs">
             {visible ? 'Hide' : 'Show'}
           </button>
-          <button onClick={() => { setEditing(true); setWord(''); }} className="text-xs text-primary hover:text-primary/80 font-medium ml-auto">
+          <button onClick={() => { setEditing(true); setWord(''); }} className="text-xs font-medium ml-auto" style={{ color: 'hsl(var(--teal-500))' }}>
             Change
           </button>
         </div>
