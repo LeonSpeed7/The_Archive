@@ -111,104 +111,83 @@ function computeLayout(members: any[], myName: string, myUsername: string, myGen
   }
   const sortedGens = [...genGroups.keys()].sort((a, b) => a - b);
 
-  // For each generation, order nodes sensibly and measure width
-  const rowWidths = new Map<number, number>();
+  // Order nodes within each generation
   const orderedGroups = new Map<number, TNode[]>();
-
   for (const gen of sortedGens) {
     const group = genGroups.get(gen)!;
-    let ordered: TNode[];
     if (gen === 0) {
-      // You first, then spouse(s), then siblings, then others
       const you = group.filter(n => n.isYou);
       const spouses = group.filter(n => n.relationship === 'spouse');
       const rest = group.filter(n => !n.isYou && n.relationship !== 'spouse');
-      ordered = [...you, ...spouses, ...rest];
+      orderedGroups.set(gen, [...you, ...spouses, ...rest]);
     } else {
-      ordered = group;
+      orderedGroups.set(gen, group);
     }
-    orderedGroups.set(gen, ordered);
-
-    // Compute width: spouses use tighter spacing, rest use standard
-    let w = 0;
-    if (gen === 0) {
-      const spouseCount = ordered.filter(n => n.relationship === 'spouse').length;
-      const otherCount = ordered.length - 1 - spouseCount; // -1 for "You"
-      w = SPOUSE_SLOT_W * spouseCount + NODE_SLOT_W * Math.max(0, otherCount);
-      // "You" is the anchor, doesn't add to width on one side — but we center the group
-      // Total slots width: You (0) + spouses * SPOUSE + others * NODE
-    } else {
-      w = (ordered.length - 1) * NODE_SLOT_W;
-    }
-    rowWidths.set(gen, w);
   }
 
-  // Canvas width = widest row + padding
-  const maxRowW = Math.max(500, ...rowWidths.values());
+  // Compute row widths based on actual node sizes
+  const nodeWidths = new Map<string, number>();
+  for (const n of nodes) {
+    const gc = getGender(n.gender);
+    if (gc.shape === 'rect') {
+      nodeWidths.set(n.id, measureNodeW(n.name, n.isYou));
+    } else {
+      nodeWidths.set(n.id, measureNodeR(n.name, n.isYou) * 2);
+    }
+  }
+
+  // Position nodes per row, centered
+  const positions: NPos[] = [];
+  let maxRowW = 500;
+
+  for (const gen of sortedGens) {
+    const ordered = orderedGroups.get(gen)!;
+    const rowW = ordered.reduce((sum, n) => sum + nodeWidths.get(n.id)!, 0) + (ordered.length - 1) * NODE_GAP;
+    if (rowW > maxRowW) maxRowW = rowW;
+  }
+
   const canvasW = maxRowW + PAD_X * 2;
   const centerX = canvasW / 2;
-
-  // Position nodes
-  const positions: NPos[] = [];
 
   for (let gi = 0; gi < sortedGens.length; gi++) {
     const gen = sortedGens[gi];
     const ordered = orderedGroups.get(gen)!;
     const y = PAD_Y + gi * LEVEL_GAP;
 
-    if (gen === 0) {
-      // Place "You" at center, spouses tight beside, others spread
-      const spouses = ordered.filter(n => n.relationship === 'spouse');
-      const others = ordered.filter(n => !n.isYou && n.relationship !== 'spouse');
+    // Total width of this row
+    const rowW = ordered.reduce((sum, n) => sum + nodeWidths.get(n.id)!, 0) + (ordered.length - 1) * NODE_GAP;
+    let curX = centerX - rowW / 2;
 
-      // You at center
-      positions.push({ x: centerX, y, node: ordered[0] });
-
-      // Spouses to the right of You
-      spouses.forEach((sp, i) => {
-        positions.push({ x: centerX + SPOUSE_SLOT_W * (i + 1), y, node: sp });
-      });
-
-      // Others (siblings, cousins) spread evenly on the left
-      const othersStartX = centerX - NODE_SLOT_W;
-      others.forEach((n, i) => {
-        positions.push({ x: othersStartX - i * NODE_SLOT_W, y, node: n });
-      });
-    } else {
-      // Center the row
-      const totalW = (ordered.length - 1) * NODE_SLOT_W;
-      const startX = centerX - totalW / 2;
-      ordered.forEach((node, i) => {
-        positions.push({ x: startX + i * NODE_SLOT_W, y, node });
-      });
+    for (const node of ordered) {
+      const nw = nodeWidths.get(node.id)!;
+      positions.push({ x: curX + nw / 2, y, node });
+      curX += nw + NODE_GAP;
     }
   }
 
-  // Ensure nothing goes off-screen left — shift everything right if needed
-  const minX = Math.min(...positions.map(p => p.x));
+  // Ensure nothing goes off-screen left
+  const minX = Math.min(...positions.map(p => p.x - nodeWidths.get(p.node.id)! / 2));
   if (minX < PAD_X) {
     const shift = PAD_X - minX;
     for (const p of positions) p.x += shift;
   }
 
-  // Recalculate canvas width after shift
-  const maxX = Math.max(...positions.map(p => p.x));
+  const maxX = Math.max(...positions.map(p => p.x + nodeWidths.get(p.node.id)! / 2));
   const finalCanvasW = Math.max(canvasW, maxX + PAD_X);
   const canvasH = PAD_Y * 2 + sortedGens.length * LEVEL_GAP;
 
-  return { positions, canvasW: finalCanvasW, canvasH, sortedGens, genGroups: orderedGroups };
+  return { positions, canvasW: finalCanvasW, canvasH, sortedGens, genGroups: orderedGroups, nodeWidths };
 }
 
 /* ─── Node shape dimensions helper ─── */
 
 function getNodeBounds(node: TNode) {
   const gc = getGender(node.gender);
-  const isYou = !!node.isYou;
-  const extra = isYou ? YOU_EXTRA : 0;
   if (gc.shape === 'rect') {
-    return { halfW: (NODE_W + extra) / 2, halfH: (NODE_H + extra) / 2 };
+    const w = measureNodeW(node.name, node.isYou);
+    return { halfW: w / 2, halfH: (NODE_H + (node.isYou ? YOU_EXTRA : 0)) / 2 };
   }
-  const r = NODE_R + (isYou ? 4 : 0);
+  const r = measureNodeR(node.name, node.isYou);
   return { halfW: r, halfH: r };
 }
 
