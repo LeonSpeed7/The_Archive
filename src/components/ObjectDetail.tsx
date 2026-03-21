@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Clock, Users, Volume2, Loader2, VolumeX, Globe, Lock } from 'lucide-react';
+import { ArrowLeft, Clock, Users, Volume2, Loader2, VolumeX, Globe, Lock, Sparkles, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
@@ -12,6 +12,21 @@ interface Props {
   onBack: () => void;
 }
 
+interface TimelineEntry {
+  year: string;
+  name: string;
+  description: string;
+}
+
+const TIMELINE_COLORS = [
+  { bg: 'hsl(262 80% 50%)', light: 'hsl(262 80% 95%)' },
+  { bg: 'hsl(199 89% 48%)', light: 'hsl(199 89% 93%)' },
+  { bg: 'hsl(142 71% 45%)', light: 'hsl(142 71% 93%)' },
+  { bg: 'hsl(25 95% 53%)',  light: 'hsl(25 95% 93%)' },
+  { bg: 'hsl(346 77% 50%)', light: 'hsl(346 77% 93%)' },
+  { bg: 'hsl(173 80% 40%)', light: 'hsl(173 80% 92%)' },
+];
+
 export default function ObjectDetail({ objectId, onBack }: Props) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -20,6 +35,11 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const evoScrollRef = useRef<HTMLDivElement>(null);
+
+  // Evolution timeline state
+  const [evolution, setEvolution] = useState<TimelineEntry[] | null>(null);
+  const [loadingEvolution, setLoadingEvolution] = useState(false);
 
   const { data: object } = useQuery({
     queryKey: ['object', objectId],
@@ -42,6 +62,21 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
       return data;
     },
   });
+
+  // Auto-generate evolution timeline when object loads
+  useEffect(() => {
+    if (object?.name && !evolution && !loadingEvolution) {
+      setLoadingEvolution(true);
+      supabase.functions.invoke('generate-timeline', { body: { objectName: object.name } })
+        .then(({ data, error }) => {
+          if (!error && data && !data.error && data.entries) {
+            setEvolution(data.entries);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoadingEvolution(false));
+    }
+  }, [object?.name]);
 
   const addStory = useMutation({
     mutationFn: async () => {
@@ -77,7 +112,6 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
     setIsLoadingAudio(true);
     try {
       const narrationText = `${object.name}. ${object.description || ''} ${object.history}`;
-
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/text-to-speech`,
         {
@@ -90,19 +124,12 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
           body: JSON.stringify({ text: narrationText }),
         }
       );
-
       if (!response.ok) throw new Error('TTS request failed');
-
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
       audioRef.current = audio;
-
-      audio.onended = () => {
-        setIsPlaying(false);
-        audioRef.current = null;
-      };
-
+      audio.onended = () => { setIsPlaying(false); audioRef.current = null; };
       await audio.play();
       setIsPlaying(true);
     } catch (err: any) {
@@ -111,6 +138,10 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
     } finally {
       setIsLoadingAudio(false);
     }
+  };
+
+  const scrollEvo = (dir: 'left' | 'right') => {
+    evoScrollRef.current?.scrollBy({ left: dir === 'left' ? -260 : 260, behavior: 'smooth' });
   };
 
   if (!object) return <div className="text-center text-muted-foreground py-12">Loading...</div>;
@@ -126,27 +157,15 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
         >
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
-
         {object.history && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={playNarration}
-            disabled={isLoadingAudio}
-            className="gap-1.5"
-          >
-            {isLoadingAudio ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : isPlaying ? (
-              <VolumeX className="w-4 h-4" />
-            ) : (
-              <Volume2 className="w-4 h-4" />
-            )}
+          <Button variant="outline" size="sm" onClick={playNarration} disabled={isLoadingAudio} className="gap-1.5">
+            {isLoadingAudio ? <Loader2 className="w-4 h-4 animate-spin" /> : isPlaying ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             {isLoadingAudio ? 'Loading…' : isPlaying ? 'Stop' : 'Listen'}
           </Button>
         )}
       </div>
 
+      {/* Object info */}
       <div className="animate-reveal-up">
         {object.image_url && (
           <img src={object.image_url} alt={object.name} className="w-full aspect-video object-cover rounded-xl mb-6" />
@@ -158,7 +177,7 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
         {object.description && <p className="text-muted-foreground mt-3 text-lg">{object.description}</p>}
       </div>
 
-      {/* History Section */}
+      {/* History */}
       {object.history && (
         <div className="animate-reveal-up stagger-1 bg-card border border-border rounded-xl p-6">
           <div className="flex items-center gap-2 mb-3">
@@ -168,6 +187,64 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
           <p className="text-foreground/80 leading-relaxed whitespace-pre-line">{object.history}</p>
         </div>
       )}
+
+      {/* Evolution Timeline */}
+      <div className="animate-reveal-up stagger-1 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <h3 className="font-display text-lg font-semibold text-foreground">Evolution Timeline</h3>
+          </div>
+          {evolution && evolution.length > 0 && (
+            <div className="flex gap-1">
+              <Button variant="outline" size="icon" className="w-7 h-7" onClick={() => scrollEvo('left')}>
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </Button>
+              <Button variant="outline" size="icon" className="w-7 h-7" onClick={() => scrollEvo('right')}>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {loadingEvolution && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Generating evolution timeline…
+          </div>
+        )}
+
+        {evolution && evolution.length > 0 && (
+          <div ref={evoScrollRef} className="flex gap-0 overflow-x-auto pb-3" style={{ scrollbarWidth: 'none' }}>
+            {evolution.map((entry, i) => {
+              const color = TIMELINE_COLORS[i % TIMELINE_COLORS.length];
+              const isLast = i === evolution.length - 1;
+              return (
+                <div key={i} className="flex-shrink-0 flex flex-col items-center" style={{ width: 190 }}>
+                  <p className="text-[10px] font-mono font-bold tracking-wider mb-1.5" style={{ color: color.bg }}>
+                    {entry.year}
+                  </p>
+                  <div className="flex items-center w-full">
+                    <div className="flex-1 h-0.5" style={{ backgroundColor: i === 0 ? 'transparent' : color.bg + '40' }} />
+                    <div className="w-3.5 h-3.5 rounded-full border-2 flex-shrink-0" style={{ borderColor: color.bg, backgroundColor: color.light }}>
+                      <Calendar className="w-2 h-2 m-auto mt-[1px]" style={{ color: color.bg }} />
+                    </div>
+                    <div className="flex-1 h-0.5" style={{ backgroundColor: isLast ? 'transparent' : color.bg + '40' }} />
+                  </div>
+                  <div className="mt-2 w-[175px] rounded-lg border px-3 py-2.5" style={{ borderColor: color.bg + '30', backgroundColor: color.light + '40' }}>
+                    <h4 className="text-xs font-semibold text-foreground leading-tight">{entry.name}</h4>
+                    <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed line-clamp-3">{entry.description}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {!loadingEvolution && (!evolution || evolution.length === 0) && (
+          <p className="text-sm text-muted-foreground text-center py-4">No evolution data available</p>
+        )}
+      </div>
 
       {/* Community Stories */}
       <div className="animate-reveal-up stagger-2 space-y-4">
@@ -212,8 +289,6 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
             className="bg-background mb-3"
             rows={3}
           />
-
-          {/* Visibility toggle */}
           <div className="flex items-center gap-3 mb-3">
             <span className="text-xs text-muted-foreground">Who can see this?</span>
             <div className="flex rounded-lg border border-border overflow-hidden">
@@ -243,7 +318,6 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
               </button>
             </div>
           </div>
-
           <Button
             onClick={() => addStory.mutate()}
             disabled={!newStory.trim() || addStory.isPending}
