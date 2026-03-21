@@ -180,7 +180,7 @@ function VisibilityColumn({
   title: string;
   icon: React.ReactNode;
   description: string;
-  badgeVariant: 'default' | 'secondary';
+  badgeVariant?: string;
   items: any[];
   sortKey: SortKey;
   onSortChange: (key: SortKey) => void;
@@ -192,25 +192,35 @@ function VisibilityColumn({
   emptyText: string;
 }) {
   return (
-    <div className="flex flex-col rounded-2xl border border-border bg-card/50 overflow-hidden">
+    <div className="flex flex-col rounded-2xl overflow-hidden" style={{
+      border: '1px solid hsl(var(--teal-200))',
+      backgroundColor: 'hsl(var(--teal-50) / 0.3)',
+    }}>
       {/* Header */}
-      <div className="px-5 py-4 border-b border-border bg-card">
+      <div className="px-5 py-4 border-b" style={{
+        borderColor: 'hsl(var(--teal-200))',
+        background: 'linear-gradient(135deg, hsl(var(--teal-500)) 0%, hsl(var(--teal-cta)) 100%)',
+      }}>
         <div className="flex items-center gap-2 mb-1">
-          {icon}
-          <h3 className="font-display font-semibold text-foreground">{title}</h3>
-          <Badge variant={badgeVariant} className="ml-auto text-xs tabular-nums">
+          <span className="text-white/90">{icon}</span>
+          <h3 className="font-display font-semibold text-white">{title}</h3>
+          <span className="ml-auto text-xs tabular-nums font-semibold px-2 py-0.5 rounded-full"
+            style={{ backgroundColor: 'hsl(0 0% 100% / 0.2)', color: 'white' }}>
             {items.length}
-          </Badge>
+          </span>
         </div>
-        <p className="text-xs text-muted-foreground">{description}</p>
+        <p className="text-xs text-white/70">{description}</p>
       </div>
 
       {/* Sort bar */}
-      <div className="px-4 py-2 border-b border-border/50 bg-muted/30">
+      <div className="px-4 py-2 border-b" style={{
+        borderColor: 'hsl(var(--teal-200) / 0.5)',
+        backgroundColor: 'hsl(var(--teal-50) / 0.5)',
+      }}>
         <Select value={sortKey} onValueChange={(v) => onSortChange(v as SortKey)}>
           <SelectTrigger className="h-8 text-xs w-full bg-transparent border-0 shadow-none focus:ring-0">
             <div className="flex items-center gap-1.5">
-              <ArrowUpDown className="w-3 h-3 text-muted-foreground" />
+              <ArrowUpDown className="w-3 h-3" style={{ color: 'hsl(var(--teal-500))' }} />
               <SelectValue />
             </div>
           </SelectTrigger>
@@ -234,7 +244,11 @@ function VisibilityColumn({
         {items.map((obj: any) => (
           <div
             key={obj.id}
-            className="group rounded-xl border border-border bg-background p-3 hover:shadow-md hover:shadow-foreground/5 transition-all duration-300"
+            className="group rounded-xl p-3 transition-all duration-300 hover:shadow-md"
+            style={{
+              backgroundColor: 'hsl(var(--background))',
+              border: '1px solid hsl(var(--teal-200) / 0.6)',
+            }}
           >
             <button
               onClick={() => onSelect(obj.id, obj)}
@@ -245,7 +259,8 @@ function VisibilityColumn({
                   <img src={obj.image_url} alt={obj.name} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <h4 className="font-medium text-sm text-foreground group-hover:text-primary transition-colors truncate">
+                  <h4 className="font-medium text-sm text-foreground truncate transition-colors"
+                    style={{ color: 'hsl(var(--teal-900))' }}>
                     {obj.name}
                   </h4>
                   {obj.description && (
@@ -257,11 +272,20 @@ function VisibilityColumn({
                 </div>
               </div>
             </button>
-            <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/50">
+            <div className="flex items-center gap-1 mt-2 pt-2" style={{ borderTop: '1px solid hsl(var(--teal-200) / 0.4)' }}>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 text-xs text-muted-foreground hover:text-primary flex-1"
+                className="h-7 text-xs flex-1 transition-colors"
+                style={{ color: 'hsl(var(--teal-700))' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'hsl(var(--teal-100))';
+                  e.currentTarget.style.color = 'hsl(var(--teal-900))';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = 'hsl(var(--teal-700))';
+                }}
                 onClick={() => onToggleVisibility(obj.id, obj.visibility ?? 'family')}
               >
                 {obj.visibility === 'public' ? <Users className="w-3 h-3 mr-1" /> : <Globe className="w-3 h-3 mr-1" />}
@@ -270,7 +294,7 @@ function VisibilityColumn({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                 onClick={() => onDelete(obj.id)}
               >
                 <Trash2 className="w-3.5 h-3.5" />
