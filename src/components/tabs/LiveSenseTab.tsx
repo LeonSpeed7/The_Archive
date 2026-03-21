@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { ScanEye, Play, Square, Loader2, AlertCircle } from 'lucide-react';
+import { ScanEye, Play, Square, Loader2, AlertCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -31,6 +31,7 @@ export default function LiveSenseTab() {
   const [detectedItems, setDetectedItems] = useState<DetectedItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [showPanel, setShowPanel] = useState(true);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -91,6 +92,7 @@ export default function LiveSenseTab() {
       if (data?.error) throw new Error(data.error);
       if (data?.items && Array.isArray(data.items)) {
         setDetectedItems(data.items);
+        if (data.items.length > 0) setShowPanel(true);
       }
     } catch (err: any) {
       console.error('Live sense error:', err);
@@ -245,35 +247,57 @@ export default function LiveSenseTab() {
             <Square className="w-4 h-4 mr-2" /> Stop Sensing
           </Button>
 
-          {/* Detected items panel */}
-          {detectedItems.length > 0 && (
-            <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid hsl(262 60% 88%)' }}>
-              <div className="px-4 py-2.5 flex items-center gap-2" style={{ backgroundColor: 'hsl(262 60% 50%)', color: 'white' }}>
-                <ScanEye className="w-4 h-4" />
-                <h3 className="text-sm font-semibold">
-                  Detected — {detectedItems.length} item{detectedItems.length !== 1 ? 's' : ''}
-                </h3>
-              </div>
-              <div className="divide-y divide-border">
-                {detectedItems.map((item, i) => (
-                  <div key={`${item.name}-${i}`} className="px-4 py-3 flex items-start gap-3 bg-card">
-                    <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: confidenceColor[item.confidence] }} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="font-semibold text-sm text-foreground">{item.name}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{
-                          backgroundColor: confidenceBg[item.confidence],
-                          color: confidenceColor[item.confidence],
-                        }}>
-                          {item.confidence}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">{item.brief}</p>
-                    </div>
+          {/* Fixed bottom detected items panel */}
+          {detectedItems.length > 0 && showPanel && (
+            <div className="fixed bottom-0 left-0 right-0 z-50 animate-fade-in" style={{ maxHeight: '45vh' }}>
+              <div className="rounded-t-2xl overflow-hidden shadow-lg border-t border-x" style={{ borderColor: 'hsl(262 60% 88%)' }}>
+                <div className="px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: 'hsl(262 60% 50%)', color: 'white' }}>
+                  <div className="flex items-center gap-2">
+                    <ScanEye className="w-4 h-4" />
+                    <h3 className="text-sm font-semibold">
+                      Detected — {detectedItems.length} item{detectedItems.length !== 1 ? 's' : ''}
+                    </h3>
                   </div>
-                ))}
+                  <button
+                    onClick={() => setShowPanel(false)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/20 transition-colors active:scale-[0.95]"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="divide-y divide-border overflow-y-auto bg-card" style={{ maxHeight: 'calc(45vh - 40px)' }}>
+                  {detectedItems.map((item, i) => (
+                    <div key={`${item.name}-${i}`} className="px-4 py-3 flex items-start gap-3">
+                      <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: confidenceColor[item.confidence] }} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="font-semibold text-sm text-foreground">{item.name}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{
+                            backgroundColor: confidenceBg[item.confidence],
+                            color: confidenceColor[item.confidence],
+                          }}>
+                            {item.confidence}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{item.brief}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
+          )}
+
+          {/* Collapsed indicator to re-open panel */}
+          {detectedItems.length > 0 && !showPanel && (
+            <button
+              onClick={() => setShowPanel(true)}
+              className="fixed bottom-4 right-4 z-50 px-4 py-2.5 rounded-xl text-white text-sm font-semibold shadow-lg flex items-center gap-2 active:scale-[0.97] transition-all"
+              style={{ backgroundColor: 'hsl(262 60% 50%)' }}
+            >
+              <ScanEye className="w-4 h-4" />
+              {detectedItems.length} detected
+            </button>
           )}
 
           {/* Empty state while waiting for first result */}
