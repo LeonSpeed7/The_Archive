@@ -1,16 +1,18 @@
 import { useState } from 'react';
-import { Camera, Globe, TreePine, BookLock } from 'lucide-react';
+import { Camera, Globe, TreePine, BookLock, ScanEye } from 'lucide-react';
 import ARCameraTab from '@/components/tabs/ARCameraTab';
 import GlobalDatabaseTab from '@/components/tabs/GlobalDatabaseTab';
 import PersonalDatabaseTab from '@/components/tabs/PersonalDatabaseTab';
 import FamilyTreeTab from '@/components/tabs/FamilyTreeTab';
+import LiveSenseTab from '@/components/tabs/LiveSenseTab';
 import ProfileMenu from '@/components/ProfileMenu';
 import GuidedExploration from '@/components/GuidedExploration';
 
-type Tab = 'camera' | 'personal' | 'database' | 'tree';
+type Tab = 'camera' | 'livesense' | 'personal' | 'database' | 'tree';
 
 const tabs: { id: Tab; label: string; icon: typeof Camera }[] = [
   { id: 'camera', label: 'AI Camera', icon: Camera },
+  { id: 'livesense', label: 'Live Sense', icon: ScanEye },
   { id: 'personal', label: 'My Archive', icon: BookLock },
   { id: 'database', label: 'Community Database', icon: Globe },
   { id: 'tree', label: 'Family Tree', icon: TreePine },
@@ -67,6 +69,7 @@ export default function Dashboard() {
       <main className="container py-8">
         <div className="animate-fade-in" key={activeTab}>
           {activeTab === 'camera' && <ARCameraTab />}
+          {activeTab === 'livesense' && <LiveSenseTab />}
           {activeTab === 'personal' && <PersonalDatabaseTab />}
           {activeTab === 'database' && <GlobalDatabaseTab />}
           {activeTab === 'tree' && <FamilyTreeTab />}
