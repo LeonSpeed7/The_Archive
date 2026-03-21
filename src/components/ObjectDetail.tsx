@@ -359,6 +359,8 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
               </div>
               <p className="text-foreground/80 leading-relaxed whitespace-pre-line">{object.history}</p>
             </div>
+          )}
+        </>
       )}
 
       {/* Evolution Timeline */}
@@ -407,7 +409,6 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
                   <div className="mt-2 w-[175px] rounded-lg border px-3 py-2.5" style={{ borderColor: color.bg + '30', backgroundColor: color.light + '40' }}>
                     <h4 className="text-xs font-semibold text-foreground leading-tight">{entry.name}</h4>
                     <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{entry.description}</p>
-                    {/* Related community images */}
                     {entry.relatedImages && entry.relatedImages.length > 0 && (
                       <div className="mt-2 space-y-1.5">
                         <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: color.bg }}>
