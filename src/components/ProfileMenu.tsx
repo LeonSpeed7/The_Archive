@@ -78,7 +78,7 @@ export default function ProfileMenu() {
         {showAccessibility ? (
           <AccessibilityPanel profile={profile} userId={user.id} onBack={() => setShowAccessibility(false)} />
         ) : showSettings ? (
-          <SettingsPanel profile={profile} userId={user.id} onBack={() => setShowSettings(false)} />
+          <SettingsPanel profile={profile} userId={user.id} email={user.email || ''} onBack={() => setShowSettings(false)} />
         ) : (
           <MainMenu
             profile={profile}
