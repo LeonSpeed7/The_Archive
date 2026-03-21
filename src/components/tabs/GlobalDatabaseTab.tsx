@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Archive, Users, ArrowLeft, Sparkles, Loader2, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Archive, Users, ArrowLeft, Sparkles, Loader2, Calendar, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import ObjectDetail from '@/components/ObjectDetail';
@@ -47,6 +47,20 @@ export default function GlobalDatabaseTab() {
     },
   });
 
+  // User's own personal objects
+  const { data: myPersonalObjects } = useQuery({
+    queryKey: ['my-personal-objects-community', search, user?.id],
+    queryFn: async () => {
+      let query = supabase.from('personal_objects').select('*').eq('user_id', user!.id).order('created_at', { ascending: false });
+      if (search.trim()) query = query.ilike('name', `%${search}%`);
+      const { data, error } = await query.limit(50);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Connected family members' personal objects
   const { data: connectedObjects } = useQuery({
     queryKey: ['connected-objects', search, user?.id],
     queryFn: async () => {
@@ -138,6 +152,7 @@ export default function GlobalDatabaseTab() {
   // Main archive
   const allTimelineObjects = [
     ...(objects?.map(o => ({ ...o, _source: 'global' as const })) ?? []),
+    ...(myPersonalObjects?.map(o => ({ ...o, _source: 'mine' as const })) ?? []),
     ...(connectedObjects?.map(o => ({ ...o, _source: 'connected' as const })) ?? []),
   ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
@@ -204,7 +219,7 @@ export default function GlobalDatabaseTab() {
                     key={`${obj._source}-${obj.id}`}
                     onClick={() => {
                       setSelectedObjectId(obj.id);
-                      setSelectedSource(obj._source === 'connected' ? 'personal' : 'global');
+                      setSelectedSource(obj._source === 'global' ? 'global' : 'personal');
                     }}
                     className="flex-shrink-0 flex flex-col items-center group no-underline"
                     style={{ width: 220, textDecoration: 'none' }}
@@ -248,6 +263,9 @@ export default function GlobalDatabaseTab() {
                         </h4>
                         {obj._source === 'connected' && (
                           <Users className="w-3 h-3 flex-shrink-0" style={{ color: 'hsl(var(--color-community))' }} />
+                        )}
+                        {obj._source === 'mine' && (
+                          <Lock className="w-3 h-3 flex-shrink-0" style={{ color: 'hsl(var(--color-success))' }} />
                         )}
                       </div>
                       {estimatedOrigin && (
