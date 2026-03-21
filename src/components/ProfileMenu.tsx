@@ -435,6 +435,78 @@ function SettingsPanel({ profile, userId, email, onBack }: { profile: any; userI
   );
 }
 
+/* ─── Email Section ─── */
+function EmailSection({ currentEmail }: { currentEmail: string }) {
+  const [editing, setEditing] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [sent, setSent] = useState(false);
+
+  const changeEmail = useMutation({
+    mutationFn: async () => {
+      const trimmed = newEmail.trim().toLowerCase();
+      if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) throw new Error('Enter a valid email');
+      if (trimmed === currentEmail.toLowerCase()) throw new Error('Same as current email');
+      const { error } = await supabase.auth.updateUser({ email: trimmed });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setSent(true);
+      toast.success('Confirmation email sent! Check both your old and new inbox.');
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  return (
+    <div className="border-t border-border pt-4 space-y-2">
+      <div className="flex items-center gap-2">
+        <Mail className="w-4 h-4" style={{ color: 'hsl(var(--teal-cta))' }} />
+        <span className="text-xs font-semibold text-foreground">Email Address</span>
+      </div>
+      {!editing ? (
+        <div className="flex items-center gap-2">
+          <code className="bg-secondary px-2 py-1 rounded text-xs font-mono text-foreground truncate max-w-[160px]">
+            {currentEmail}
+          </code>
+          <button onClick={() => { setEditing(true); setNewEmail(''); setSent(false); }} className="text-xs font-medium ml-auto" style={{ color: 'hsl(var(--teal-500))' }}>
+            Change
+          </button>
+        </div>
+      ) : sent ? (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground leading-tight">
+            Confirmation sent to <strong>{newEmail}</strong>. Check both inboxes to confirm the change.
+          </p>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setEditing(false); setSent(false); }}>
+            Done
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <input
+            type="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            placeholder="New email address…"
+            className="w-full h-7 px-2 text-xs rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            autoFocus
+          />
+          <div className="flex gap-2">
+            <Button size="sm" className="h-7 text-xs px-2" onClick={() => changeEmail.mutate()} disabled={!newEmail.trim() || changeEmail.isPending}>
+              {changeEmail.isPending ? 'Sending…' : 'Update Email'}
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => setEditing(false)}>
+              Cancel
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground leading-tight">
+            You'll receive a confirmation at both addresses.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Safeword Section ─── */
 function SafewordSection({ userId, safeword }: { userId: string; safeword: string | null }) {
   const queryClient = useQueryClient();
