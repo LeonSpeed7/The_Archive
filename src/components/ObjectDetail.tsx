@@ -200,7 +200,7 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
   });
 
   // Editing state
-  const isOwner = (isPersonal && (object as any).user_id === user?.id) || (!isPersonal && (object as any).created_by === user?.id);
+  const isOwner = (isPersonal && (object as any)?.user_id === user?.id) || (!isPersonal && (object as any)?.created_by === user?.id);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
