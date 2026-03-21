@@ -44,27 +44,33 @@ const GENDER_CONFIG: Record<string, { shape: 'circle' | 'rect' | 'diamond'; fill
   prefer_not_to_say: { shape: 'rect',    fill: 'hsl(0 0% 94%)',    stroke: 'hsl(0 0% 50%)',    label: 'Unspecified' },
 };
 
-// Spacing constants — tuned so nothing overlaps
-const NODE_GAP = 24;       // horizontal gap between nodes
-const LEVEL_GAP = 140;     // vertical gap between generations
+// Spacing constants
+const NODE_GAP = 24;
+const LEVEL_GAP = 140;
 const PAD_X = 100;
 const PAD_Y = 70;
 
-const NODE_H = 54;   // rect height
-const NODE_MIN_W = 100; // minimum rect width
-const NODE_CHAR_W = 7.5; // approx px per character for sizing
-const NODE_R = 27;   // circle / diamond radius (min)
-const YOU_EXTRA = 8; // extra size for the "You" node
+const NODE_H = 48;         // rect height
+const NODE_MIN_W = 80;     // minimum rect width
+const NODE_CHAR_W = 7;     // approx px per char
+const YOU_EXTRA = 6;       // extra size for "You" node
+
+// Circle sizing: tight to text
+const CIRCLE_PAD = 12;     // padding around text inside circle
+const CIRCLE_MIN_R = 22;   // minimum radius
+const CIRCLE_CHAR_W = 3.8; // approx half-width per char for radius calc
 
 function measureNodeW(name: string, isYou?: boolean): number {
   const label = isYou ? 'You' : name;
-  const textW = label.length * NODE_CHAR_W + 28; // padding
+  const textW = label.length * NODE_CHAR_W + 24;
   return Math.max(NODE_MIN_W, textW) + (isYou ? YOU_EXTRA : 0);
 }
 
 function measureNodeR(name: string, isYou?: boolean): number {
-  const base = Math.max(NODE_R, (name.length * 3.5) + 8);
-  return base + (isYou ? 4 : 0);
+  const label = isYou ? 'You' : name;
+  // Radius sized to fit text: half the text width + padding, but never smaller than min
+  const textBasedR = label.length * CIRCLE_CHAR_W + CIRCLE_PAD;
+  return Math.max(CIRCLE_MIN_R, textBasedR) + (isYou ? 3 : 0);
 }
 
 /* ─── Helpers ─── */
@@ -87,7 +93,6 @@ interface NPos { x: number; y: number; node: TNode; }
 /* ─── Overlap-free Layout ─── */
 
 function computeLayout(members: any[], myName: string, myUsername: string, myGender: string) {
-  // Build node list
   const nodes: TNode[] = [
     { id: 'you', name: myName, username: myUsername, gender: myGender, relationship: 'self', generation: 0, isYou: true },
     ...members.map((m: any) => ({
@@ -103,7 +108,6 @@ function computeLayout(members: any[], myName: string, myUsername: string, myGen
     })),
   ];
 
-  // Group by generation
   const genGroups = new Map<number, TNode[]>();
   for (const n of nodes) {
     if (!genGroups.has(n.generation)) genGroups.set(n.generation, []);
@@ -111,7 +115,6 @@ function computeLayout(members: any[], myName: string, myUsername: string, myGen
   }
   const sortedGens = [...genGroups.keys()].sort((a, b) => a - b);
 
-  // Order nodes within each generation
   const orderedGroups = new Map<number, TNode[]>();
   for (const gen of sortedGens) {
     const group = genGroups.get(gen)!;
@@ -125,7 +128,6 @@ function computeLayout(members: any[], myName: string, myUsername: string, myGen
     }
   }
 
-  // Compute row widths based on actual node sizes
   const nodeWidths = new Map<string, number>();
   for (const n of nodes) {
     const gc = getGender(n.gender);
@@ -136,7 +138,6 @@ function computeLayout(members: any[], myName: string, myUsername: string, myGen
     }
   }
 
-  // Position nodes per row, centered
   const positions: NPos[] = [];
   let maxRowW = 500;
 
@@ -153,8 +154,6 @@ function computeLayout(members: any[], myName: string, myUsername: string, myGen
     const gen = sortedGens[gi];
     const ordered = orderedGroups.get(gen)!;
     const y = PAD_Y + gi * LEVEL_GAP;
-
-    // Total width of this row
     const rowW = ordered.reduce((sum, n) => sum + nodeWidths.get(n.id)!, 0) + (ordered.length - 1) * NODE_GAP;
     let curX = centerX - rowW / 2;
 
@@ -165,7 +164,6 @@ function computeLayout(members: any[], myName: string, myUsername: string, myGen
     }
   }
 
-  // Ensure nothing goes off-screen left
   const minX = Math.min(...positions.map(p => p.x - nodeWidths.get(p.node.id)! / 2));
   if (minX < PAD_X) {
     const shift = PAD_X - minX;
@@ -204,6 +202,10 @@ function NodeShape({ x, y, node }: { x: number; y: number; node: TNode }) {
   const h = NODE_H + (isYou ? YOU_EXTRA : 0);
   const r = measureNodeR(node.name, isYou);
 
+  // For circles: compute font sizes that fit within the circle
+  const circleFontName = Math.min(9, Math.max(6.5, (r * 1.3) / Math.max(displayName.length, 3)));
+  const circleFontIni = Math.min(13, r * 0.5);
+
   return (
     <g className="cursor-default">
       {/* Subtle glow for "You" */}
@@ -214,13 +216,13 @@ function NodeShape({ x, y, node }: { x: number; y: number; node: TNode }) {
         </rect>
       )}
       {isYou && gc.shape === 'circle' && (
-        <circle cx={x} cy={y} r={r + 5} fill="none" stroke={gc.stroke} strokeWidth={1} opacity={0.12}>
+        <circle cx={x} cy={y} r={r + 4} fill="none" stroke={gc.stroke} strokeWidth={1} opacity={0.12}>
           <animate attributeName="opacity" values="0.12;0.04;0.12" dur="3s" repeatCount="indefinite" />
         </circle>
       )}
       {isYou && gc.shape === 'diamond' && (
         <polygon
-          points={`${x},${y - r - 5} ${x + r + 5},${y} ${x},${y + r + 5} ${x - r - 5},${y}`}
+          points={`${x},${y - r - 4} ${x + r + 4},${y} ${x},${y + r + 4} ${x - r - 4},${y}`}
           fill="none" stroke={gc.stroke} strokeWidth={1} opacity={0.12}>
           <animate attributeName="opacity" values="0.12;0.04;0.12" dur="3s" repeatCount="indefinite" />
         </polygon>
@@ -241,17 +243,32 @@ function NodeShape({ x, y, node }: { x: number; y: number; node: TNode }) {
       )}
 
       {/* Initials */}
-      <text x={x} y={y - 5} textAnchor="middle" dominantBaseline="central"
-        fill={gc.stroke} fontSize={isYou ? 14 : 12} fontWeight="700"
-        fontFamily="var(--font-display)" letterSpacing="0.5">
-        {ini}
-      </text>
+      {gc.shape === 'circle' ? (
+        <text x={x} y={y - 4} textAnchor="middle" dominantBaseline="central"
+          fill={gc.stroke} fontSize={circleFontIni} fontWeight="700"
+          fontFamily="var(--font-display)" letterSpacing="0.5">
+          {ini}
+        </text>
+      ) : (
+        <text x={x} y={y - 5} textAnchor="middle" dominantBaseline="central"
+          fill={gc.stroke} fontSize={isYou ? 14 : 12} fontWeight="700"
+          fontFamily="var(--font-display)" letterSpacing="0.5">
+          {ini}
+        </text>
+      )}
 
       {/* Full Name */}
-      <text x={x} y={y + 10} textAnchor="middle" dominantBaseline="central"
-        fill={gc.stroke} fontSize="8.5" fontWeight="500" fontFamily="var(--font-body)" opacity={0.85}>
-        {displayName}
-      </text>
+      {gc.shape === 'circle' ? (
+        <text x={x} y={y + circleFontIni * 0.6 + 2} textAnchor="middle" dominantBaseline="central"
+          fill={gc.stroke} fontSize={circleFontName} fontWeight="500" fontFamily="var(--font-body)" opacity={0.85}>
+          {displayName}
+        </text>
+      ) : (
+        <text x={x} y={y + 10} textAnchor="middle" dominantBaseline="central"
+          fill={gc.stroke} fontSize="8.5" fontWeight="500" fontFamily="var(--font-body)" opacity={0.85}>
+          {displayName}
+        </text>
+      )}
 
       {/* Username below shape */}
       {node.username && (
@@ -273,7 +290,6 @@ function ConnectionLine({ from, to, relationship }: { from: NPos; to: NPos; rela
   const fromB = getNodeBounds(from.node);
   const toB = getNodeBounds(to.node);
 
-  // Same generation — horizontal
   if (Math.abs(dy) < 10) {
     const isSpouse = relationship === 'spouse';
     const dir = dx > 0 ? 1 : -1;
@@ -291,7 +307,6 @@ function ConnectionLine({ from, to, relationship }: { from: NPos; to: NPos; rela
       );
     }
 
-    // Sibling / cousin arc above
     const arcY = from.y - 36;
     return (
       <g>
@@ -307,7 +322,6 @@ function ConnectionLine({ from, to, relationship }: { from: NPos; to: NPos; rela
     );
   }
 
-  // Different generation — right-angle tree branch
   const goingDown = dy > 0;
   const y1 = goingDown ? from.y + fromB.halfH + 2 : from.y - fromB.halfH - 2;
   const y2 = goingDown ? to.y - toB.halfH - 2 : to.y + toB.halfH + 2;
@@ -343,7 +357,6 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
 
   const { positions, canvasW, canvasH, sortedGens, nodeWidths } = computeLayout(members, myName, myUsername, myGender);
 
-  // Auto-fit
   useEffect(() => {
     if (!containerRef.current || positions.length === 0) return;
     const rect = containerRef.current.getBoundingClientRect();
@@ -382,7 +395,6 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
     setZoom(s);
   }, [canvasW, canvasH]);
 
-  // Block wheel zoom on the canvas
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -436,7 +448,6 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
               </filter>
             </defs>
 
-            {/* Generation labels + guide lines */}
             {sortedGens.map((gen, gi) => {
               const y = PAD_Y + gi * LEVEL_GAP;
               const isCollapsed = collapsedGens.has(gen);
@@ -453,12 +464,10 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
               );
             })}
 
-            {/* Connection lines */}
             {visiblePositions.filter(p => !p.node.isYou).map(p => (
               <ConnectionLine key={`c-${p.node.id}`} from={youPos} to={p} relationship={p.node.relationship} />
             ))}
 
-            {/* Nodes with hover tooltips */}
             {visiblePositions.map((p, i) => {
               const tooltipText = p.node.note || p.node.bio || '';
               return (
@@ -474,7 +483,6 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
           </svg>
         </div>
 
-        {/* Collapse toggles */}
         {sortedGens.length > 1 && (
           <div className="absolute bottom-3 left-3 flex flex-wrap gap-1 z-10">
             {sortedGens.filter(g => g !== 0).map(gen => (
@@ -497,7 +505,6 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
           Drag to pan
         </p>
 
-        {/* Zoom buttons */}
         <div className="absolute top-3 right-3 flex flex-col gap-1 z-10">
           <button onClick={handleZoomIn}
             className="flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-200 active:scale-95"
@@ -611,9 +618,7 @@ export default function FamilyTreeTab() {
         p_relationship: relationship,
       });
       if (error) throw error;
-      // If a note was provided, update the connection
       if (memberNote.trim() && data) {
-        // Find the connection just created
         const { data: conn } = await supabase
           .from('family_connections')
           .select('id')

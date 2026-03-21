@@ -1,12 +1,28 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { LogOut, Settings, Shield, Camera, User, Accessibility, ChevronRight, Eye } from 'lucide-react';
+import { LogOut, Settings, Shield, Camera, User, Accessibility, ChevronRight, Eye, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
 import { useToggleGuidedExploration } from '@/components/GuidedExploration';
+
+// Global zoom state
+const ZOOM_KEY = 'app-zoom-level';
+function getStoredZoom(): number {
+  try { return parseFloat(localStorage.getItem(ZOOM_KEY) || '100'); } catch { return 100; }
+}
+function setStoredZoom(v: number) {
+  localStorage.setItem(ZOOM_KEY, String(v));
+  document.documentElement.style.fontSize = `${v}%`;
+}
+
+// Apply stored zoom on load
+if (typeof window !== 'undefined') {
+  const z = getStoredZoom();
+  if (z !== 100) document.documentElement.style.fontSize = `${z}%`;
+}
 
 function useFullProfile() {
   const { user } = useAuth();
@@ -143,6 +159,7 @@ function AccessibilityPanel({ profile, userId, onBack }: { profile: any; userId:
   const queryClient = useQueryClient();
   const guidedEnabled = (profile as any).guided_exploration ?? true;
   const toggleMut = useToggleGuidedExploration();
+  const [zoomLevel, setZoomLevel] = useState(getStoredZoom);
 
   const handleToggle = () => {
     const newVal = !guidedEnabled;
@@ -152,6 +169,12 @@ function AccessibilityPanel({ profile, userId, onBack }: { profile: any; userId:
         queryClient.invalidateQueries({ queryKey: ['full-profile'] });
       },
     });
+  };
+
+  const updateZoom = (newZoom: number) => {
+    const clamped = Math.max(75, Math.min(150, newZoom));
+    setZoomLevel(clamped);
+    setStoredZoom(clamped);
   };
 
   return (
@@ -191,6 +214,48 @@ function AccessibilityPanel({ profile, userId, onBack }: { profile: any; userId:
           <p className="text-[11px] text-muted-foreground">
             {guidedEnabled ? 'Popup tour is visible when you log in.' : 'Tour is hidden. Re-enable anytime.'}
           </p>
+        </div>
+
+        {/* Zoom Controls */}
+        <div className="border-t border-border pt-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <ZoomIn className="w-4 h-4" style={{ color: 'hsl(var(--teal-500))' }} />
+            <span className="text-sm font-semibold text-foreground">Zoom Level</span>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Adjust the overall text and interface size for comfort.
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => updateZoom(zoomLevel - 10)}
+              disabled={zoomLevel <= 75}
+              className="w-8 h-8 rounded-lg border flex items-center justify-center transition-all active:scale-95 disabled:opacity-30"
+              style={{ borderColor: 'hsl(var(--teal-200))', color: 'hsl(var(--teal-700))' }}
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            <div className="flex-1 text-center">
+              <span className="text-sm font-semibold font-mono text-foreground">{zoomLevel}%</span>
+            </div>
+            <button
+              onClick={() => updateZoom(zoomLevel + 10)}
+              disabled={zoomLevel >= 150}
+              className="w-8 h-8 rounded-lg border flex items-center justify-center transition-all active:scale-95 disabled:opacity-30"
+              style={{ borderColor: 'hsl(var(--teal-200))', color: 'hsl(var(--teal-700))' }}
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          {zoomLevel !== 100 && (
+            <button
+              onClick={() => updateZoom(100)}
+              className="flex items-center gap-1.5 text-xs transition-colors hover:underline"
+              style={{ color: 'hsl(var(--teal-500))' }}
+            >
+              <RotateCcw className="w-3 h-3" />
+              Reset to 100%
+            </button>
+          )}
         </div>
       </div>
     </div>

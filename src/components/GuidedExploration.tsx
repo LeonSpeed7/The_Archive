@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, ChevronRight, ChevronLeft, Camera, Globe, BookLock, TreePine, Sparkles, Users, Shield } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Camera, Globe, BookLock, TreePine, Sparkles, Users, Shield, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 type Tab = 'camera' | 'personal' | 'database' | 'tree';
@@ -89,7 +89,7 @@ interface Props {
 export default function GuidedExploration({ activeTab, onNavigateTab }: Props) {
   const { data: enabled, isLoading } = useGuidedExploration();
   const toggleMut = useToggleGuidedExploration();
-  const [dismissed, setDismissed] = useState(false);
+  const [minimized, setMinimized] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
 
   // Sync step to active tab
@@ -98,7 +98,24 @@ export default function GuidedExploration({ activeTab, onNavigateTab }: Props) {
     if (idx >= 0) setCurrentStep(idx);
   }, [activeTab]);
 
-  if (isLoading || !enabled || dismissed) return null;
+  if (isLoading || !enabled) return null;
+
+  // Minimized state: show small icon in corner
+  if (minimized) {
+    return (
+      <button
+        onClick={() => setMinimized(false)}
+        className="fixed bottom-6 right-6 z-50 w-11 h-11 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95"
+        style={{
+          background: 'linear-gradient(135deg, hsl(var(--teal-500)), hsl(var(--teal-cta)))',
+          boxShadow: '0 6px 24px hsl(var(--teal-900) / 0.18)',
+        }}
+        title="Open Guided Tour"
+      >
+        <HelpCircle className="w-5 h-5 text-white" />
+      </button>
+    );
+  }
 
   const step = STEPS[currentStep];
   const Icon = step.icon;
@@ -110,11 +127,11 @@ export default function GuidedExploration({ activeTab, onNavigateTab }: Props) {
     onNavigateTab(STEPS[idx].tab);
   };
 
-  const handleDismiss = () => setDismissed(true);
+  const handleMinimize = () => setMinimized(true);
 
   const handleTurnOff = () => {
     toggleMut.mutate(false);
-    setDismissed(true);
+    setMinimized(true);
   };
 
   return (
@@ -139,8 +156,9 @@ export default function GuidedExploration({ activeTab, onNavigateTab }: Props) {
           </span>
         </div>
         <button
-          onClick={handleDismiss}
+          onClick={handleMinimize}
           className="text-white/70 hover:text-white transition-colors active:scale-95"
+          title="Minimize tour"
         >
           <X className="w-4 h-4" />
         </button>
@@ -220,7 +238,7 @@ export default function GuidedExploration({ activeTab, onNavigateTab }: Props) {
             <Button
               size="sm"
               className="h-8 text-xs text-white"
-              onClick={handleDismiss}
+              onClick={handleMinimize}
               style={{ backgroundColor: 'hsl(var(--teal-cta))' }}
             >
               Done!
