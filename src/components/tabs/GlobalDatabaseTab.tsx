@@ -262,7 +262,10 @@ export default function GlobalDatabaseTab() {
                           {obj.name}
                         </h4>
                         {obj._source === 'connected' && (
-                          <Users className="w-3 h-3 flex-shrink-0" style={{ color: 'hsl(var(--color-community))' }} />
+                          <Users className="w-3 h-3 flex-shrink-0" style={{ color: 'hsl(var(--color-community))' }} title="Family member's object" />
+                        )}
+                        {obj._source === 'mine' && (
+                          <BookLock className="w-3 h-3 flex-shrink-0" style={{ color: 'hsl(var(--color-success))' }} title="Your personal object" />
                         )}
                       </div>
                       {estimatedOrigin && (
