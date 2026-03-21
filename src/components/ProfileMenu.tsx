@@ -425,6 +425,9 @@ function SettingsPanel({ profile, userId, email, onBack }: { profile: any; userI
           </Button>
         </div>
 
+        {/* Email */}
+        <EmailSection currentEmail={email} />
+
         {/* Safeword */}
         <SafewordSection userId={userId} safeword={profile.safeword} />
       </div>
