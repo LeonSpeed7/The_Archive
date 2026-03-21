@@ -121,8 +121,8 @@ export default function FamilyTreeTab() {
               <User className="w-5 h-5 text-accent" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-medium text-foreground">{c.connected_name}</p>
-              <p className="text-xs text-muted-foreground">Connected family member</p>
+              <p className="font-medium text-foreground">{c.nickname || c.connected_name}</p>
+              <p className="text-xs text-muted-foreground">{c.connected_name} · Connected family member</p>
             </div>
             <Button
               variant="ghost"
