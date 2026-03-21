@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Clock, Users, Link2 } from 'lucide-react';
+import { ArrowLeft, Clock, Users, Volume2, Loader2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
@@ -16,6 +16,9 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [newStory, setNewStory] = useState('');
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const { data: object } = useQuery({
     queryKey: ['object', objectId],
@@ -56,22 +59,101 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
     onError: (err: any) => toast.error(err.message),
   });
 
+  const playNarration = async () => {
+    if (isPlaying && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+      setIsPlaying(false);
+      return;
+    }
+
+    if (!object?.history) {
+      toast.error('No history available to narrate');
+      return;
+    }
+
+    setIsLoadingAudio(true);
+    try {
+      const narrationText = `${object.name}. ${object.description || ''} ${object.history}`;
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/text-to-speech`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ text: narrationText }),
+        }
+      );
+
+      if (!response.ok) throw new Error('TTS request failed');
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        setIsPlaying(false);
+        audioRef.current = null;
+      };
+
+      await audio.play();
+      setIsPlaying(true);
+    } catch (err: any) {
+      toast.error('Failed to play narration');
+      console.error(err);
+    } finally {
+      setIsLoadingAudio(false);
+    }
+  };
+
   if (!object) return <div className="text-center text-muted-foreground py-12">Loading...</div>;
+
+  const estimatedOrigin = (object as any).estimated_origin;
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors active:scale-[0.97]"
-      >
-        <ArrowLeft className="w-4 h-4" /> Back
-      </button>
+      <div className="flex items-center justify-between">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors active:scale-[0.97]"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
+
+        {/* TTS Button */}
+        {object.history && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={playNarration}
+            disabled={isLoadingAudio}
+            className="gap-1.5"
+          >
+            {isLoadingAudio ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : isPlaying ? (
+              <VolumeX className="w-4 h-4" />
+            ) : (
+              <Volume2 className="w-4 h-4" />
+            )}
+            {isLoadingAudio ? 'Loading…' : isPlaying ? 'Stop' : 'Listen'}
+          </Button>
+        )}
+      </div>
 
       <div className="animate-reveal-up">
         {object.image_url && (
           <img src={object.image_url} alt={object.name} className="w-full aspect-video object-cover rounded-xl mb-6" />
         )}
         <h2 className="font-display text-3xl font-bold text-foreground leading-tight">{object.name}</h2>
+        {estimatedOrigin && (
+          <p className="text-sm text-primary font-mono font-semibold mt-2">Origin: {estimatedOrigin}</p>
+        )}
         {object.description && <p className="text-muted-foreground mt-3 text-lg">{object.description}</p>}
       </div>
 
@@ -82,7 +164,7 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
             <Clock className="w-4 h-4 text-primary" />
             <h3 className="font-display text-lg font-semibold text-foreground">History</h3>
           </div>
-          <p className="text-foreground/80 leading-relaxed">{object.history}</p>
+          <p className="text-foreground/80 leading-relaxed whitespace-pre-line">{object.history}</p>
         </div>
       )}
 
