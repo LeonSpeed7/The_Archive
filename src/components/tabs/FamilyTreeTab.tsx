@@ -234,8 +234,13 @@ export default function FamilyTreeTab() {
         </div>
       )}
 
+      {/* Family Connections */}
+      <div className="animate-reveal-up stagger-2">
+        <FamilyConnections />
+      </div>
+
       {/* Tree View */}
-      <div className="animate-reveal-up stagger-2 space-y-2">
+      <div className="animate-reveal-up stagger-3 space-y-2">
         {members && members.length === 0 && (
           <div className="text-center py-16">
             <User className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
