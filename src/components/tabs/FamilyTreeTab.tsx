@@ -668,12 +668,13 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
 
             {/* Parent-child lines (vertical + horizontal right-angle connectors) */}
             {parentChildLinks.map((link, i) => {
-              // Hide line if either the parent or child generation is collapsed
-              const parentGen = sortedGens.find((_, gi) => PAD_Y + gi * LEVEL_GAP === link.parentY);
+              // Hide if child generation is collapsed
               if (collapsedGens.has(link.childNode.generation)) return null;
-              // Also check if parent generation is collapsed by checking if parentY's gen is collapsed
-              const parentGenNum = positions.find(p => Math.abs(p.y - link.parentY) < 5 && !p.node.isYou)?.node.generation;
-              if (parentGenNum !== undefined && collapsedGens.has(parentGenNum)) return null;
+              // Find the parent's generation from positions matching the parentY
+              // Gen 0 ("you") is never collapsed, so lines from gen 0 to children always show
+              const parentPos = positions.find(p => Math.abs(p.y - link.parentY) < 5);
+              const parentGenNum = parentPos?.node.generation;
+              if (parentGenNum !== undefined && parentGenNum !== 0 && collapsedGens.has(parentGenNum)) return null;
               return (
                 <ParentChildLine key={`pc-${i}`}
                   parentMidX={link.parentMidX} parentY={link.parentY}
