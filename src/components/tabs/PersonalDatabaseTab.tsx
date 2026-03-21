@@ -180,7 +180,7 @@ function VisibilityColumn({
   title: string;
   icon: React.ReactNode;
   description: string;
-  badgeVariant: 'default' | 'secondary';
+  badgeVariant?: string;
   items: any[];
   sortKey: SortKey;
   onSortChange: (key: SortKey) => void;
