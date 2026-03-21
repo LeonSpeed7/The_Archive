@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Clock, Users, Volume2, Loader2, VolumeX, Globe, Lock, Sparkles, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Clock, Users, Volume2, Loader2, VolumeX, Globe, Lock, Sparkles, Calendar, ChevronLeft, ChevronRight, Pencil, X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
@@ -32,8 +32,6 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
   const isPersonal = source === 'personal';
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [newStory, setNewStory] = useState('');
-  const [storyVisibility, setStoryVisibility] = useState<'global' | 'family'>('global');
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -59,7 +57,7 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
       const col = isPersonal ? 'personal_object_id' : 'object_id';
       const { data, error } = await supabase
         .from('stories')
-        .select('*, profiles:user_id(display_name, full_name)')
+        .select('*, profiles:user_id(display_name, full_name, username)')
         .eq(col, objectId)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -81,29 +79,6 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
         .finally(() => setLoadingEvolution(false));
     }
   }, [object?.name]);
-
-  const addStory = useMutation({
-    mutationFn: async () => {
-      const insertData: any = {
-        user_id: user!.id,
-        content: newStory,
-        visibility: storyVisibility,
-      };
-      if (isPersonal) {
-        insertData.personal_object_id = objectId;
-      } else {
-        insertData.object_id = objectId;
-      }
-      const { error } = await supabase.from('stories').insert(insertData);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success('Story added!');
-      setNewStory('');
-      queryClient.invalidateQueries({ queryKey: ['stories', objectId, source] });
-    },
-    onError: (err: any) => toast.error(err.message),
-  });
 
   const playNarration = async () => {
     if (isPlaying && audioRef.current) {
@@ -256,86 +231,252 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
       </div>
 
       {/* Community Stories */}
-      <div className="animate-reveal-up stagger-2 space-y-4">
-        <div className="flex items-center gap-2">
-          <Users className="w-4 h-4 text-accent" />
-          <h3 className="font-display text-lg font-semibold text-foreground">
-            Stories ({stories?.length ?? 0})
-          </h3>
-        </div>
+      <StoriesSection
+        stories={stories}
+        objectId={objectId}
+        isPersonal={isPersonal}
+        source={source}
+        user={user}
+        queryClient={queryClient}
+      />
+    </div>
+  );
+}
 
-        {stories?.map((story) => {
-          const authorName = (story.profiles as any)?.full_name || (story.profiles as any)?.display_name || 'Anonymous';
-          const vis = (story as any).visibility;
-          return (
-            <div key={story.id} className="bg-card border border-border rounded-lg p-4">
-              <p className="text-foreground/90 leading-relaxed">{story.content}</p>
-              <div className="flex items-center gap-2 mt-2">
-                <p className="text-xs text-muted-foreground">
-                  by {authorName} · {new Date(story.created_at).toLocaleDateString()}
-                </p>
-                {vis === 'family' ? (
-                  <span className="inline-flex items-center gap-1 text-[10px] bg-accent/15 text-accent px-1.5 py-0.5 rounded-full">
-                    <Lock className="w-2.5 h-2.5" /> Family only
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                    <Globe className="w-2.5 h-2.5" /> Public
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
+/* ─── Stories Section ─── */
+function StoriesSection({
+  stories,
+  objectId,
+  isPersonal,
+  source,
+  user,
+  queryClient,
+}: {
+  stories: any[] | undefined;
+  objectId: string;
+  isPersonal: boolean;
+  source: string;
+  user: any;
+  queryClient: any;
+}) {
+  const [newStory, setNewStory] = useState('');
+  const [storyVisibility, setStoryVisibility] = useState<'global' | 'family'>('global');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [editVisibility, setEditVisibility] = useState<'global' | 'family'>('global');
 
-        {/* Add story form */}
-        <div className="bg-card border border-border rounded-xl p-5">
-          <h4 className="text-sm font-medium text-foreground mb-3">Share your story</h4>
-          <Textarea
-            value={newStory}
-            onChange={(e) => setNewStory(e.target.value)}
-            placeholder="What does this object mean to you?"
-            className="bg-background mb-3"
-            rows={3}
-          />
-          <div className="flex items-center gap-3 mb-3">
-            <span className="text-xs text-muted-foreground">Who can see this?</span>
-            <div className="flex rounded-lg border border-border overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setStoryVisibility('global')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
-                  storyVisibility === 'global'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-card text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Globe className="w-3 h-3" />
-                Everyone
-              </button>
-              <button
-                type="button"
-                onClick={() => setStoryVisibility('family')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors border-l border-border ${
-                  storyVisibility === 'family'
-                    ? 'bg-accent text-accent-foreground'
-                    : 'bg-card text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Lock className="w-3 h-3" />
-                Family only
-              </button>
-            </div>
-          </div>
-          <Button
-            onClick={() => addStory.mutate()}
-            disabled={!newStory.trim() || addStory.isPending}
-            size="sm"
-          >
-            {addStory.isPending ? 'Posting...' : 'Add Story'}
-          </Button>
-        </div>
+  // Fetch family connections to determine name display
+  const { data: familyIds } = useQuery({
+    queryKey: ['family-ids', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('family_connections')
+        .select('requester_id, target_id')
+        .or(`requester_id.eq.${user!.id},target_id.eq.${user!.id}`);
+      if (error) throw error;
+      const ids = new Set<string>();
+      data.forEach((c) => {
+        ids.add(c.requester_id === user!.id ? c.target_id : c.requester_id);
+      });
+      return ids;
+    },
+    enabled: !!user,
+  });
+
+  const addStory = useMutation({
+    mutationFn: async () => {
+      const insertData: any = {
+        user_id: user!.id,
+        content: newStory,
+        visibility: storyVisibility,
+      };
+      if (isPersonal) {
+        insertData.personal_object_id = objectId;
+      } else {
+        insertData.object_id = objectId;
+      }
+      const { error } = await supabase.from('stories').insert(insertData);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Story published!');
+      setNewStory('');
+      queryClient.invalidateQueries({ queryKey: ['stories', objectId, source] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const updateStory = useMutation({
+    mutationFn: async ({ id, content, visibility }: { id: string; content: string; visibility: string }) => {
+      const { error } = await supabase
+        .from('stories')
+        .update({ content, visibility })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Story updated!');
+      setEditingId(null);
+      queryClient.invalidateQueries({ queryKey: ['stories', objectId, source] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const getAuthorDisplay = (story: any) => {
+    const profile = story.profiles as any;
+    if (!profile) return 'Anonymous';
+    const storyUserId = story.user_id;
+
+    // Own story — show full name
+    if (storyUserId === user?.id) {
+      return profile.full_name || profile.display_name || 'You';
+    }
+    // Family member — show full name
+    if (familyIds?.has(storyUserId)) {
+      return profile.full_name || profile.display_name || 'Anonymous';
+    }
+    // Public viewer — show username
+    return profile.username ? `@${profile.username}` : profile.display_name || 'Anonymous';
+  };
+
+  const startEdit = (story: any) => {
+    setEditingId(story.id);
+    setEditContent(story.content);
+    setEditVisibility(story.visibility || 'global');
+  };
+
+  return (
+    <div className="animate-reveal-up stagger-2 space-y-4">
+      <div className="flex items-center gap-2">
+        <Users className="w-4 h-4 text-accent" />
+        <h3 className="font-display text-lg font-semibold text-foreground">
+          Stories ({stories?.length ?? 0})
+        </h3>
       </div>
+
+      {stories?.map((story) => {
+        const authorName = getAuthorDisplay(story);
+        const vis = story.visibility;
+        const isOwn = story.user_id === user?.id;
+        const isEditing = editingId === story.id;
+
+        return (
+          <div key={story.id} className="bg-card border border-border rounded-lg p-4">
+            {isEditing ? (
+              <div className="space-y-3">
+                <Textarea
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  className="bg-background"
+                  rows={3}
+                />
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground">Visibility:</span>
+                  <VisibilityToggle value={editVisibility} onChange={setEditVisibility} />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => updateStory.mutate({ id: story.id, content: editContent, visibility: editVisibility })}
+                    disabled={!editContent.trim() || updateStory.isPending}
+                    className="gap-1"
+                  >
+                    <Check className="w-3 h-3" /> {updateStory.isPending ? 'Saving…' : 'Save'}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} className="gap-1">
+                    <X className="w-3 h-3" /> Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="text-foreground/90 leading-relaxed">{story.content}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <p className="text-xs text-muted-foreground">
+                    by {authorName} · {new Date(story.created_at).toLocaleDateString()}
+                  </p>
+                  {vis === 'family' ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] bg-accent/15 text-accent px-1.5 py-0.5 rounded-full">
+                      <Lock className="w-2.5 h-2.5" /> Family only
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                      <Globe className="w-2.5 h-2.5" /> Public
+                    </span>
+                  )}
+                  {isOwn && (
+                    <button
+                      onClick={() => startEdit(story)}
+                      className="ml-auto text-muted-foreground hover:text-foreground transition-colors active:scale-95"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Add story form */}
+      <div className="bg-card border border-border rounded-xl p-5">
+        <h4 className="text-sm font-medium text-foreground mb-3">Share your story</h4>
+        <Textarea
+          value={newStory}
+          onChange={(e) => setNewStory(e.target.value)}
+          placeholder="What does this object mean to you?"
+          className="bg-background mb-3"
+          rows={3}
+        />
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-xs text-muted-foreground">Who can see this?</span>
+          <VisibilityToggle value={storyVisibility} onChange={setStoryVisibility} />
+        </div>
+        <Button
+          onClick={() => addStory.mutate()}
+          disabled={!newStory.trim() || addStory.isPending}
+          size="sm"
+        >
+          {addStory.isPending ? 'Posting…' : 'Publish Story'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Visibility Toggle ─── */
+function VisibilityToggle({
+  value,
+  onChange,
+}: {
+  value: 'global' | 'family';
+  onChange: (v: 'global' | 'family') => void;
+}) {
+  return (
+    <div className="flex rounded-lg border border-border overflow-hidden">
+      <button
+        type="button"
+        onClick={() => onChange('global')}
+        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
+          value === 'global'
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-card text-muted-foreground hover:text-foreground'
+        }`}
+      >
+        <Globe className="w-3 h-3" /> Everyone
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('family')}
+        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors border-l border-border ${
+          value === 'family'
+            ? 'bg-accent text-accent-foreground'
+            : 'bg-card text-muted-foreground hover:text-foreground'
+        }`}
+      >
+        <Lock className="w-3 h-3" /> Family only
+      </button>
     </div>
   );
 }
