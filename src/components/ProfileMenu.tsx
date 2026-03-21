@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { LogOut, Settings, Shield, Camera, User, Accessibility, ChevronRight, Eye, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { LogOut, Settings, Shield, Camera, User, Accessibility, ChevronRight, Eye, ZoomIn, ZoomOut, RotateCcw, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
