@@ -81,11 +81,9 @@ export default function GlobalDatabaseTab() {
   });
 
   const { data: myPersonalObjects } = useQuery({
-    queryKey: ['my-personal-objects-community', search, user?.id],
+    queryKey: ['my-personal-objects-community', user?.id],
     queryFn: async () => {
-      let query = supabase.from('personal_objects').select('*').eq('user_id', user!.id).order('created_at', { ascending: false });
-      if (search.trim()) query = query.ilike('name', `%${search}%`);
-      const { data, error } = await query.limit(50);
+      const { data, error } = await supabase.from('personal_objects').select('*').eq('user_id', user!.id).order('created_at', { ascending: false }).limit(50);
       if (error) throw error;
       return data;
     },
@@ -93,9 +91,9 @@ export default function GlobalDatabaseTab() {
   });
 
   const { data: connectedObjects } = useQuery({
-    queryKey: ['connected-objects', search, user?.id],
+    queryKey: ['connected-objects', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('search_connected_personal_objects', { p_search: search.trim() });
+      const { data, error } = await supabase.rpc('search_connected_personal_objects', { p_search: '' });
       if (error) throw error;
       return data as any[];
     },
