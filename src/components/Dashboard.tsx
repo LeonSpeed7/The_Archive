@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Camera, Globe, TreePine, BookLock } from 'lucide-react';
+import { Camera, Globe, TreePine, BookLock, ScanEye } from 'lucide-react';
 import ARCameraTab from '@/components/tabs/ARCameraTab';
 import GlobalDatabaseTab from '@/components/tabs/GlobalDatabaseTab';
 import PersonalDatabaseTab from '@/components/tabs/PersonalDatabaseTab';
 import FamilyTreeTab from '@/components/tabs/FamilyTreeTab';
+import LiveSenseTab from '@/components/tabs/LiveSenseTab';
 import ProfileMenu from '@/components/ProfileMenu';
 import GuidedExploration from '@/components/GuidedExploration';
 

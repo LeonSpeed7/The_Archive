@@ -254,7 +254,7 @@ export default function LiveSenseTab() {
                   Detected — {detectedItems.length} item{detectedItems.length !== 1 ? 's' : ''}
                 </h3>
               </div>
-              <div className="divide-y" style={{ divideColor: 'hsl(262 60% 93%)' }}>
+              <div className="divide-y divide-border">
                 {detectedItems.map((item, i) => (
                   <div key={`${item.name}-${i}`} className="px-4 py-3 flex items-start gap-3 bg-card">
                     <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: confidenceColor[item.confidence] }} />
