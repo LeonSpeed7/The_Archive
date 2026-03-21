@@ -73,7 +73,7 @@ export default function PersonalDatabaseTab() {
             <BookLock className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
             <p className="text-muted-foreground">Your personal archive is empty</p>
             <p className="text-sm text-muted-foreground/70 mt-1">
-              Use the AR Camera to identify objects and save them here
+              Use the AI Camera to identify objects and save them here
             </p>
           </div>
         )}
