@@ -213,6 +213,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
+          estimated_origin: string | null
           history: string | null
           id: string
           image_url: string | null
@@ -223,6 +224,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          estimated_origin?: string | null
           history?: string | null
           id?: string
           image_url?: string | null
@@ -233,6 +235,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          estimated_origin?: string | null
           history?: string | null
           id?: string
           image_url?: string | null
@@ -245,6 +248,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          estimated_origin: string | null
           history: string | null
           id: string
           image_url: string | null
@@ -255,6 +259,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          estimated_origin?: string | null
           history?: string | null
           id?: string
           image_url?: string | null
@@ -265,6 +270,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          estimated_origin?: string | null
           history?: string | null
           id?: string
           image_url?: string | null
@@ -349,6 +355,7 @@ export type Database = {
         Returns: {
           created_at: string
           description: string | null
+          estimated_origin: string | null
           history: string | null
           id: string
           image_url: string | null
