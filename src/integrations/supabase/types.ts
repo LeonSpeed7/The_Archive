@@ -285,28 +285,34 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           display_name: string | null
+          full_name: string | null
           id: string
           safeword: string | null
           updated_at: string
           user_id: string
+          username: string | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          full_name?: string | null
           id?: string
           safeword?: string | null
           updated_at?: string
           user_id: string
+          username?: string | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          full_name?: string | null
           id?: string
           safeword?: string | null
           updated_at?: string
           user_id?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -347,9 +353,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      connect_by_safeword:
-        | { Args: { p_safeword: string }; Returns: string }
-        | { Args: { p_nickname?: string; p_safeword: string }; Returns: string }
+      connect_by_safeword: {
+        Args: { p_safeword: string; p_username?: string }
+        Returns: string
+      }
       search_connected_personal_objects: {
         Args: { p_search?: string }
         Returns: {
