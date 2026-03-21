@@ -175,7 +175,7 @@ export default function ARCameraTab() {
       return data;
     },
     onSuccess: (data) => {
-      const label = archiveTarget === 'global' ? 'Global Archive' : 'Personal Archive';
+      const label = archiveTarget === 'global' ? 'Community Archive' : 'Personal Archive';
       toast.success(`Saved to ${label}!`);
       if (archiveTarget === 'global') {
         setSelectedObjectId(data.id);
@@ -376,7 +376,7 @@ export default function ARCameraTab() {
                 }`}
               >
                 <Globe className="w-4 h-4" />
-                Global Archive
+                Community Archive
               </button>
               <button
                 onClick={() => setArchiveTarget('personal')}
@@ -392,7 +392,7 @@ export default function ARCameraTab() {
             </div>
             <div className="flex gap-2">
               <Button onClick={() => saveToDatabase.mutate()} disabled={saveToDatabase.isPending} className="flex-1">
-                {saveToDatabase.isPending ? 'Saving...' : `Save to ${archiveTarget === 'global' ? 'Global' : 'Personal'} Archive`}
+                {saveToDatabase.isPending ? 'Saving...' : `Save to ${archiveTarget === 'global' ? 'Community' : 'Personal'} Archive`}
               </Button>
               <Button variant="outline" onClick={resetAll}>
                 Start Over

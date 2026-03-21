@@ -11,7 +11,7 @@ type Tab = 'camera' | 'personal' | 'database' | 'tree';
 const tabs: { id: Tab; label: string; icon: typeof Camera }[] = [
   { id: 'camera', label: 'AI Camera', icon: Camera },
   { id: 'personal', label: 'My Archive', icon: BookLock },
-  { id: 'database', label: 'Global Database', icon: Globe },
+  { id: 'database', label: 'Community Database', icon: Globe },
   { id: 'tree', label: 'Family Tree', icon: TreePine },
 ];
 

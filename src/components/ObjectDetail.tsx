@@ -493,7 +493,7 @@ function StoriesSection({
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                      <Globe className="w-2.5 h-2.5" /> Public
+                      <Globe className="w-2.5 h-2.5" /> Community
                     </span>
                   )}
                   {isOwn && (
@@ -568,7 +568,7 @@ function VisibilityToggle({
             : 'bg-card text-muted-foreground hover:text-foreground'
         }`}
       >
-        <Globe className="w-3 h-3" /> Everyone
+        <Globe className="w-3 h-3" /> Community
       </button>
       <button
         type="button"
