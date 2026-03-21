@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { Plus, Unlink, Loader2, TreePine, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Unlink, Loader2, TreePine, ChevronDown, ChevronRight, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -45,16 +45,27 @@ const GENDER_CONFIG: Record<string, { shape: 'circle' | 'rect' | 'diamond'; fill
 };
 
 // Spacing constants — tuned so nothing overlaps
-const NODE_SLOT_W = 150;   // horizontal slot per node (includes gap)
-const SPOUSE_SLOT_W = 110; // tighter slot for spouse next to "You"
+const NODE_GAP = 24;       // horizontal gap between nodes
 const LEVEL_GAP = 140;     // vertical gap between generations
 const PAD_X = 100;
 const PAD_Y = 70;
 
-const NODE_W = 116;  // rect width
 const NODE_H = 54;   // rect height
-const NODE_R = 27;   // circle / diamond radius
+const NODE_MIN_W = 100; // minimum rect width
+const NODE_CHAR_W = 7.5; // approx px per character for sizing
+const NODE_R = 27;   // circle / diamond radius (min)
 const YOU_EXTRA = 8; // extra size for the "You" node
+
+function measureNodeW(name: string, isYou?: boolean): number {
+  const label = isYou ? 'You' : name;
+  const textW = label.length * NODE_CHAR_W + 28; // padding
+  return Math.max(NODE_MIN_W, textW) + (isYou ? YOU_EXTRA : 0);
+}
+
+function measureNodeR(name: string, isYou?: boolean): number {
+  const base = Math.max(NODE_R, (name.length * 3.5) + 8);
+  return base + (isYou ? 4 : 0);
+}
 
 /* ─── Helpers ─── */
 
@@ -100,104 +111,83 @@ function computeLayout(members: any[], myName: string, myUsername: string, myGen
   }
   const sortedGens = [...genGroups.keys()].sort((a, b) => a - b);
 
-  // For each generation, order nodes sensibly and measure width
-  const rowWidths = new Map<number, number>();
+  // Order nodes within each generation
   const orderedGroups = new Map<number, TNode[]>();
-
   for (const gen of sortedGens) {
     const group = genGroups.get(gen)!;
-    let ordered: TNode[];
     if (gen === 0) {
-      // You first, then spouse(s), then siblings, then others
       const you = group.filter(n => n.isYou);
       const spouses = group.filter(n => n.relationship === 'spouse');
       const rest = group.filter(n => !n.isYou && n.relationship !== 'spouse');
-      ordered = [...you, ...spouses, ...rest];
+      orderedGroups.set(gen, [...you, ...spouses, ...rest]);
     } else {
-      ordered = group;
+      orderedGroups.set(gen, group);
     }
-    orderedGroups.set(gen, ordered);
-
-    // Compute width: spouses use tighter spacing, rest use standard
-    let w = 0;
-    if (gen === 0) {
-      const spouseCount = ordered.filter(n => n.relationship === 'spouse').length;
-      const otherCount = ordered.length - 1 - spouseCount; // -1 for "You"
-      w = SPOUSE_SLOT_W * spouseCount + NODE_SLOT_W * Math.max(0, otherCount);
-      // "You" is the anchor, doesn't add to width on one side — but we center the group
-      // Total slots width: You (0) + spouses * SPOUSE + others * NODE
-    } else {
-      w = (ordered.length - 1) * NODE_SLOT_W;
-    }
-    rowWidths.set(gen, w);
   }
 
-  // Canvas width = widest row + padding
-  const maxRowW = Math.max(500, ...rowWidths.values());
+  // Compute row widths based on actual node sizes
+  const nodeWidths = new Map<string, number>();
+  for (const n of nodes) {
+    const gc = getGender(n.gender);
+    if (gc.shape === 'rect') {
+      nodeWidths.set(n.id, measureNodeW(n.name, n.isYou));
+    } else {
+      nodeWidths.set(n.id, measureNodeR(n.name, n.isYou) * 2);
+    }
+  }
+
+  // Position nodes per row, centered
+  const positions: NPos[] = [];
+  let maxRowW = 500;
+
+  for (const gen of sortedGens) {
+    const ordered = orderedGroups.get(gen)!;
+    const rowW = ordered.reduce((sum, n) => sum + nodeWidths.get(n.id)!, 0) + (ordered.length - 1) * NODE_GAP;
+    if (rowW > maxRowW) maxRowW = rowW;
+  }
+
   const canvasW = maxRowW + PAD_X * 2;
   const centerX = canvasW / 2;
-
-  // Position nodes
-  const positions: NPos[] = [];
 
   for (let gi = 0; gi < sortedGens.length; gi++) {
     const gen = sortedGens[gi];
     const ordered = orderedGroups.get(gen)!;
     const y = PAD_Y + gi * LEVEL_GAP;
 
-    if (gen === 0) {
-      // Place "You" at center, spouses tight beside, others spread
-      const spouses = ordered.filter(n => n.relationship === 'spouse');
-      const others = ordered.filter(n => !n.isYou && n.relationship !== 'spouse');
+    // Total width of this row
+    const rowW = ordered.reduce((sum, n) => sum + nodeWidths.get(n.id)!, 0) + (ordered.length - 1) * NODE_GAP;
+    let curX = centerX - rowW / 2;
 
-      // You at center
-      positions.push({ x: centerX, y, node: ordered[0] });
-
-      // Spouses to the right of You
-      spouses.forEach((sp, i) => {
-        positions.push({ x: centerX + SPOUSE_SLOT_W * (i + 1), y, node: sp });
-      });
-
-      // Others (siblings, cousins) spread evenly on the left
-      const othersStartX = centerX - NODE_SLOT_W;
-      others.forEach((n, i) => {
-        positions.push({ x: othersStartX - i * NODE_SLOT_W, y, node: n });
-      });
-    } else {
-      // Center the row
-      const totalW = (ordered.length - 1) * NODE_SLOT_W;
-      const startX = centerX - totalW / 2;
-      ordered.forEach((node, i) => {
-        positions.push({ x: startX + i * NODE_SLOT_W, y, node });
-      });
+    for (const node of ordered) {
+      const nw = nodeWidths.get(node.id)!;
+      positions.push({ x: curX + nw / 2, y, node });
+      curX += nw + NODE_GAP;
     }
   }
 
-  // Ensure nothing goes off-screen left — shift everything right if needed
-  const minX = Math.min(...positions.map(p => p.x));
+  // Ensure nothing goes off-screen left
+  const minX = Math.min(...positions.map(p => p.x - nodeWidths.get(p.node.id)! / 2));
   if (minX < PAD_X) {
     const shift = PAD_X - minX;
     for (const p of positions) p.x += shift;
   }
 
-  // Recalculate canvas width after shift
-  const maxX = Math.max(...positions.map(p => p.x));
+  const maxX = Math.max(...positions.map(p => p.x + nodeWidths.get(p.node.id)! / 2));
   const finalCanvasW = Math.max(canvasW, maxX + PAD_X);
   const canvasH = PAD_Y * 2 + sortedGens.length * LEVEL_GAP;
 
-  return { positions, canvasW: finalCanvasW, canvasH, sortedGens, genGroups: orderedGroups };
+  return { positions, canvasW: finalCanvasW, canvasH, sortedGens, genGroups: orderedGroups, nodeWidths };
 }
 
 /* ─── Node shape dimensions helper ─── */
 
 function getNodeBounds(node: TNode) {
   const gc = getGender(node.gender);
-  const isYou = !!node.isYou;
-  const extra = isYou ? YOU_EXTRA : 0;
   if (gc.shape === 'rect') {
-    return { halfW: (NODE_W + extra) / 2, halfH: (NODE_H + extra) / 2 };
+    const w = measureNodeW(node.name, node.isYou);
+    return { halfW: w / 2, halfH: (NODE_H + (node.isYou ? YOU_EXTRA : 0)) / 2 };
   }
-  const r = NODE_R + (isYou ? 4 : 0);
+  const r = measureNodeR(node.name, node.isYou);
   return { halfW: r, halfH: r };
 }
 
@@ -206,14 +196,13 @@ function getNodeBounds(node: TNode) {
 function NodeShape({ x, y, node }: { x: number; y: number; node: TNode }) {
   const gc = getGender(node.gender);
   const ini = initials(node.name);
-  const truncName = node.name.length > 13 ? node.name.slice(0, 12) + '…' : node.name;
+  const displayName = node.isYou ? 'You' : node.name;
   const isYou = !!node.isYou;
   const strokeW = isYou ? 2.5 : 1.5;
-  const extra = isYou ? YOU_EXTRA : 0;
 
-  const w = NODE_W + extra;
-  const h = NODE_H + extra;
-  const r = NODE_R + (isYou ? 4 : 0);
+  const w = measureNodeW(node.name, isYou);
+  const h = NODE_H + (isYou ? YOU_EXTRA : 0);
+  const r = measureNodeR(node.name, isYou);
 
   return (
     <g className="cursor-default">
@@ -258,10 +247,10 @@ function NodeShape({ x, y, node }: { x: number; y: number; node: TNode }) {
         {ini}
       </text>
 
-      {/* Name */}
+      {/* Full Name */}
       <text x={x} y={y + 10} textAnchor="middle" dominantBaseline="central"
         fill={gc.stroke} fontSize="8.5" fontWeight="500" fontFamily="var(--font-body)" opacity={0.85}>
-        {isYou ? 'You' : truncName}
+        {displayName}
       </text>
 
       {/* Username below shape */}
@@ -352,7 +341,7 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
   const dragRef = useRef({ startX: 0, startY: 0, panX: 0, panY: 0 });
   const [collapsedGens, setCollapsedGens] = useState<Set<number>>(new Set());
 
-  const { positions, canvasW, canvasH, sortedGens } = computeLayout(members, myName, myUsername, myGender);
+  const { positions, canvasW, canvasH, sortedGens, nodeWidths } = computeLayout(members, myName, myUsername, myGender);
 
   // Auto-fit
   useEffect(() => {
@@ -380,6 +369,27 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
   }, [dragging]);
 
   const handlePointerUp = useCallback(() => setDragging(false), []);
+
+  const handleZoomIn = useCallback(() => setZoom(z => Math.min(z + 0.15, 2.5)), []);
+  const handleZoomOut = useCallback(() => setZoom(z => Math.max(z - 0.15, 0.3)), []);
+  const handleFit = useCallback(() => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const sx = (rect.width - 16) / canvasW;
+    const sy = (rect.height - 16) / canvasH;
+    const s = Math.min(sx, sy, 1.15);
+    setPan({ x: (rect.width - canvasW * s) / 2, y: Math.max(8, (rect.height - canvasH * s) / 2) });
+    setZoom(s);
+  }, [canvasW, canvasH]);
+
+  // Block wheel zoom on the canvas
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const prevent = (e: WheelEvent) => e.preventDefault();
+    el.addEventListener('wheel', prevent, { passive: false });
+    return () => el.removeEventListener('wheel', prevent);
+  }, []);
 
   const toggleGen = (gen: number) => {
     if (gen === 0) return;
@@ -486,6 +496,28 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
         <p className="absolute top-3 left-3 text-[10px] pointer-events-none select-none" style={{ color: 'hsl(var(--teal-400))' }}>
           Drag to pan
         </p>
+
+        {/* Zoom buttons */}
+        <div className="absolute top-3 right-3 flex flex-col gap-1 z-10">
+          <button onClick={handleZoomIn}
+            className="flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-200 active:scale-95"
+            style={{ backgroundColor: 'hsl(var(--background) / 0.9)', borderColor: 'hsl(var(--teal-200))', color: 'hsl(var(--teal-700))', backdropFilter: 'blur(4px)' }}
+            title="Zoom in">
+            <ZoomIn className="w-4 h-4" />
+          </button>
+          <button onClick={handleZoomOut}
+            className="flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-200 active:scale-95"
+            style={{ backgroundColor: 'hsl(var(--background) / 0.9)', borderColor: 'hsl(var(--teal-200))', color: 'hsl(var(--teal-700))', backdropFilter: 'blur(4px)' }}
+            title="Zoom out">
+            <ZoomOut className="w-4 h-4" />
+          </button>
+          <button onClick={handleFit}
+            className="flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-200 active:scale-95"
+            style={{ backgroundColor: 'hsl(var(--background) / 0.9)', borderColor: 'hsl(var(--teal-200))', color: 'hsl(var(--teal-700))', backdropFilter: 'blur(4px)' }}
+            title="Fit to view">
+            <Maximize2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Legend */}
