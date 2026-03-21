@@ -44,8 +44,13 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
   const { data: object } = useQuery({
     queryKey: [isPersonal ? 'personal-object' : 'object', objectId],
     queryFn: async () => {
-      const table = isPersonal ? 'personal_objects' : 'objects';
-      const { data, error } = await supabase.from(table).select('*').eq('id', objectId).single();
+      if (isPersonal) {
+        const { data, error } = await supabase.rpc('get_personal_object_if_allowed', { p_object_id: objectId });
+        if (error) throw error;
+        if (!data || (Array.isArray(data) && data.length === 0)) throw new Error('Object not found or access denied');
+        return Array.isArray(data) ? data[0] : data;
+      }
+      const { data, error } = await supabase.from('objects').select('*').eq('id', objectId).single();
       if (error) throw error;
       return data;
     },
