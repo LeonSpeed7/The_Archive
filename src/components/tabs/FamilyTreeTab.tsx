@@ -496,6 +496,28 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
         <p className="absolute top-3 left-3 text-[10px] pointer-events-none select-none" style={{ color: 'hsl(var(--teal-400))' }}>
           Drag to pan
         </p>
+
+        {/* Zoom buttons */}
+        <div className="absolute top-3 right-3 flex flex-col gap-1 z-10">
+          <button onClick={handleZoomIn}
+            className="flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-200 active:scale-95"
+            style={{ backgroundColor: 'hsl(var(--background) / 0.9)', borderColor: 'hsl(var(--teal-200))', color: 'hsl(var(--teal-700))', backdropFilter: 'blur(4px)' }}
+            title="Zoom in">
+            <ZoomIn className="w-4 h-4" />
+          </button>
+          <button onClick={handleZoomOut}
+            className="flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-200 active:scale-95"
+            style={{ backgroundColor: 'hsl(var(--background) / 0.9)', borderColor: 'hsl(var(--teal-200))', color: 'hsl(var(--teal-700))', backdropFilter: 'blur(4px)' }}
+            title="Zoom out">
+            <ZoomOut className="w-4 h-4" />
+          </button>
+          <button onClick={handleFit}
+            className="flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-200 active:scale-95"
+            style={{ backgroundColor: 'hsl(var(--background) / 0.9)', borderColor: 'hsl(var(--teal-200))', color: 'hsl(var(--teal-700))', backdropFilter: 'blur(4px)' }}
+            title="Fit to view">
+            <Maximize2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Legend */}
