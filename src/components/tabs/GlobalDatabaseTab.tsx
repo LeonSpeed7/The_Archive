@@ -47,6 +47,20 @@ export default function GlobalDatabaseTab() {
     },
   });
 
+  // User's own personal objects
+  const { data: myPersonalObjects } = useQuery({
+    queryKey: ['my-personal-objects-community', search, user?.id],
+    queryFn: async () => {
+      let query = supabase.from('personal_objects').select('*').eq('user_id', user!.id).order('created_at', { ascending: false });
+      if (search.trim()) query = query.ilike('name', `%${search}%`);
+      const { data, error } = await query.limit(50);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Connected family members' personal objects
   const { data: connectedObjects } = useQuery({
     queryKey: ['connected-objects', search, user?.id],
     queryFn: async () => {
