@@ -131,52 +131,45 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
   });
 
   const playNarration = async () => {
-    if (isPlaying && audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
+    // Stop if already playing
+    if (isPlaying) {
+      window.speechSynthesis.cancel();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
       setIsPlaying(false);
       return;
     }
 
-    // Build narration from all available text
     const parts = [object?.name, object?.description, object?.history].filter(Boolean);
     if (parts.length === 0) {
       toast.error('No content available to narrate');
       return;
     }
 
-    setIsLoadingAudio(true);
-    try {
-      const narrationText = parts.join('. ');
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/text-to-speech`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ text: narrationText }),
-        }
-      );
-      if (!response.ok) {
-        const errBody = await response.text();
-        console.error('TTS response:', response.status, errBody);
-        throw new Error(`TTS request failed: ${response.status}`);
+    const narrationText = parts.join('. ');
+
+    // Use browser Web Speech API — no API key needed
+    if ('speechSynthesis' in window) {
+      setIsLoadingAudio(true);
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(narrationText);
+        utterance.rate = 0.95;
+        utterance.pitch = 1;
+        utterance.onend = () => setIsPlaying(false);
+        utterance.onerror = () => { setIsPlaying(false); toast.error('Speech synthesis failed'); };
+        window.speechSynthesis.speak(utterance);
+        setIsPlaying(true);
+      } catch (err: any) {
+        toast.error('Failed to play narration');
+        console.error(err);
+      } finally {
+        setIsLoadingAudio(false);
       }
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-      audio.onended = () => { setIsPlaying(false); audioRef.current = null; };
-      await audio.play();
-      setIsPlaying(true);
-    } catch (err: any) {
-      toast.error('Failed to play narration');
-      console.error(err);
-    } finally {
-      setIsLoadingAudio(false);
+    } else {
+      toast.error('Your browser does not support text-to-speech');
     }
   };
 
