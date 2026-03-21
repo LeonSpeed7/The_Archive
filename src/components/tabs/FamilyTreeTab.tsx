@@ -1,25 +1,25 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { Plus, User, Unlink, Loader2, GripVertical, ZoomIn, ZoomOut } from 'lucide-react';
+import { Plus, User, Unlink, Loader2, Heart, TreePine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useConnections } from '@/components/FamilyConnections';
 
-interface TreeNode {
-  id: string;
-  connectionId: string;
-  name: string;
-  username: string;
-  x: number;
-  y: number;
-  parentId: string | null;
-}
+// Warm palette that fits the heritage aesthetic
+const MEMBER_COLORS = [
+  { bg: 'hsl(18 62% 45%)', light: 'hsl(18 62% 92%)', glow: 'hsl(18 62% 45% / 0.2)' },
+  { bg: 'hsl(152 28% 42%)', light: 'hsl(152 28% 92%)', glow: 'hsl(152 28% 42% / 0.2)' },
+  { bg: 'hsl(25 80% 55%)', light: 'hsl(25 80% 92%)', glow: 'hsl(25 80% 55% / 0.2)' },
+  { bg: 'hsl(200 50% 45%)', light: 'hsl(200 50% 92%)', glow: 'hsl(200 50% 45% / 0.2)' },
+  { bg: 'hsl(340 45% 50%)', light: 'hsl(340 45% 92%)', glow: 'hsl(340 45% 50% / 0.2)' },
+  { bg: 'hsl(45 70% 48%)', light: 'hsl(45 70% 92%)', glow: 'hsl(45 70% 48% / 0.2)' },
+];
 
-interface TreeLayout {
-  nodes: Record<string, { x: number; y: number; parentId: string | null }>;
+function getInitials(name: string) {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
 export default function FamilyTreeTab() {
@@ -30,32 +30,6 @@ export default function FamilyTreeTab() {
   const [username, setUsername] = useState('');
   const [safeword, setSafeword] = useState('');
 
-  // Tree visualization state
-  const [treeLayout, setTreeLayout] = useState<TreeLayout>({ nodes: {} });
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [connecting, setConnecting] = useState<string | null>(null);
-  const [zoom, setZoom] = useState(1);
-  const canvasRef = useRef<HTMLDivElement>(null);
-
-  // Load saved layout from localStorage
-  useEffect(() => {
-    if (user) {
-      const saved = localStorage.getItem(`tree-layout-${user.id}`);
-      if (saved) {
-        try { setTreeLayout(JSON.parse(saved)); } catch {}
-      }
-    }
-  }, [user]);
-
-  // Save layout whenever it changes
-  useEffect(() => {
-    if (user && Object.keys(treeLayout.nodes).length > 0) {
-      localStorage.setItem(`tree-layout-${user.id}`, JSON.stringify(treeLayout));
-    }
-  }, [treeLayout, user]);
-
-  // Fetch current user's profile
   const { data: myProfile } = useQuery({
     queryKey: ['my-profile', user?.id],
     queryFn: async () => {
@@ -101,98 +75,26 @@ export default function FamilyTreeTab() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  // Build tree nodes from connections
-  const treeNodes: TreeNode[] = (connections as any[]).map((c, i) => {
-    const saved = treeLayout.nodes[c.id];
+  const members = (connections as any[]);
+  const myName = myProfile?.full_name || myProfile?.display_name || 'You';
+  const myUsername = myProfile?.username || '';
+
+  // Layout: center node at (cx, cy), members arranged in a circle around it
+  const svgW = 700;
+  const svgH = Math.max(420, members.length > 6 ? 520 : 420);
+  const cx = svgW / 2;
+  const cy = svgH / 2;
+  const centerR = 48;
+  const memberR = 36;
+  const orbitRadius = Math.min(svgW, svgH) * 0.34;
+
+  const memberPositions = members.map((_, i) => {
+    const angle = (2 * Math.PI * i) / members.length - Math.PI / 2;
     return {
-      id: c.id,
-      connectionId: c.id,
-      name: c.connected_name || 'Unknown',
-      username: c.connected_username || '',
-      x: saved?.x ?? 100 + (i % 3) * 180,
-      y: saved?.y ?? 200 + Math.floor(i / 3) * 140,
-      parentId: saved?.parentId ?? null,
+      x: cx + orbitRadius * Math.cos(angle),
+      y: cy + orbitRadius * Math.sin(angle),
     };
   });
-
-  const meNode: TreeNode = {
-    id: 'me',
-    connectionId: 'me',
-    name: myProfile?.full_name || myProfile?.display_name || 'You',
-    username: myProfile?.username || '',
-    x: treeLayout.nodes['me']?.x ?? 300,
-    y: treeLayout.nodes['me']?.y ?? 60,
-    parentId: null,
-  };
-
-  const allNodes = [meNode, ...treeNodes];
-
-  const handleMouseDown = useCallback((nodeId: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    const node = allNodes.find(n => n.id === nodeId);
-    if (!node) return;
-
-    if (connecting) {
-      if (connecting !== nodeId) {
-        setTreeLayout(prev => {
-          const existing = prev.nodes[connecting] || { x: 0, y: 0, parentId: null };
-          return {
-            nodes: {
-              ...prev.nodes,
-              [connecting]: { x: existing.x, y: existing.y, parentId: nodeId },
-            },
-          };
-        });
-      }
-      setConnecting(null);
-      return;
-    }
-
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    setDraggingId(nodeId);
-    setDragOffset({
-      x: e.clientX / zoom - node.x,
-      y: e.clientY / zoom - node.y,
-    });
-  }, [allNodes, connecting, zoom]);
-
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!draggingId) return;
-    const newX = e.clientX / zoom - dragOffset.x;
-    const newY = e.clientY / zoom - dragOffset.y;
-    const existing = treeLayout.nodes[draggingId] || { x: 0, y: 0, parentId: null };
-    setTreeLayout(prev => ({
-      nodes: {
-        ...prev.nodes,
-        [draggingId]: { x: newX, y: newY, parentId: existing.parentId ?? null },
-      },
-    }));
-  }, [draggingId, dragOffset, zoom, treeLayout]);
-
-  const handleMouseUp = useCallback(() => {
-    setDraggingId(null);
-  }, []);
-
-  const removeParentLink = (nodeId: string) => {
-    setTreeLayout(prev => ({
-      nodes: {
-        ...prev.nodes,
-        [nodeId]: { ...prev.nodes[nodeId], parentId: null },
-      },
-    }));
-  };
-
-  // Draw lines between parent-child
-  const lines: { x1: number; y1: number; x2: number; y2: number }[] = [];
-  for (const node of allNodes) {
-    if (node.parentId) {
-      const parent = allNodes.find(n => n.id === node.parentId);
-      if (parent) {
-        lines.push({ x1: parent.x + 70, y1: parent.y + 40, x2: node.x + 70, y2: node.y });
-      }
-    }
-  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -245,136 +147,272 @@ export default function FamilyTreeTab() {
         </div>
       )}
 
-      {/* Visual Tree Canvas */}
-      {!isLoading && (connections as any[]).length > 0 && (
-        <div className="animate-reveal-up stagger-1 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display text-lg font-semibold text-foreground">
-              Visual Family Tree
-            </h3>
-            <div className="flex items-center gap-1">
-              {connecting && (
-                <span className="text-xs text-primary mr-2 font-medium">Click a node to set as parent…</span>
-              )}
-              <Button variant="outline" size="icon" className="w-8 h-8" onClick={() => setZoom(z => Math.min(z + 0.1, 2))}>
-                <ZoomIn className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="outline" size="icon" className="w-8 h-8" onClick={() => setZoom(z => Math.max(z - 0.1, 0.5))}>
-                <ZoomOut className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Drag members to arrange. Double-click a member to start linking, then click another to set parent. Right-click a member to remove its parent link.
+      {/* Visual Tree */}
+      {isLoading && <p className="text-muted-foreground text-center py-8">Loading…</p>}
+
+      {!isLoading && members.length === 0 && !showAddForm && (
+        <div className="text-center py-16 animate-reveal-up">
+          <TreePine className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+          <p className="text-muted-foreground font-medium">Your family tree is empty</p>
+          <p className="text-sm text-muted-foreground/70 mt-1">
+            Click "Add Member" and enter a family member's username & safeword to start building
           </p>
-          <div
-            ref={canvasRef}
-            className="relative bg-card border border-border rounded-xl overflow-hidden select-none"
-            style={{ height: 500, cursor: draggingId ? 'grabbing' : 'default' }}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
+        </div>
+      )}
+
+      {!isLoading && members.length > 0 && (
+        <div className="animate-reveal-up stagger-1">
+          <svg
+            viewBox={`0 0 ${svgW} ${svgH}`}
+            className="w-full max-w-2xl mx-auto"
+            style={{ filter: 'drop-shadow(0 2px 8px hsl(var(--foreground) / 0.04))' }}
           >
-            <svg
-              className="absolute inset-0 w-full h-full pointer-events-none"
-              style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}
-            >
-              {lines.map((line, i) => (
-                <line
-                  key={i}
-                  x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2}
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  strokeDasharray="6 3"
-                  opacity={0.5}
-                />
-              ))}
-            </svg>
-            <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top left', position: 'relative', width: '100%', height: '100%' }}>
-              {allNodes.map((node) => (
-                <div
-                  key={node.id}
-                  className={`absolute flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 shadow-md cursor-grab active:cursor-grabbing transition-shadow
-                    ${node.id === 'me'
-                      ? 'bg-primary text-primary-foreground border-primary shadow-primary/20'
-                      : connecting === node.id
-                        ? 'bg-accent/30 border-accent shadow-accent/20'
-                        : 'bg-card border-border hover:shadow-lg hover:shadow-foreground/5'
-                    }
-                  `}
-                  style={{
-                    left: node.x,
-                    top: node.y,
-                    width: 140,
-                    zIndex: draggingId === node.id ? 50 : 10,
-                  }}
-                  onMouseDown={(e) => handleMouseDown(node.id, e)}
-                  onDoubleClick={() => {
-                    if (node.id !== 'me') setConnecting(node.id);
-                  }}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    if (node.id !== 'me') removeParentLink(node.id);
-                  }}
+            <defs>
+              {/* Glow filter for center */}
+              <filter id="center-glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="8" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+              {/* Subtle shadow for member nodes */}
+              <filter id="node-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="hsl(24 20% 16%)" floodOpacity="0.08" />
+              </filter>
+            </defs>
+
+            {/* Organic branch lines from center to each member */}
+            {memberPositions.map((pos, i) => {
+              const color = MEMBER_COLORS[i % MEMBER_COLORS.length];
+              // Curved path using a quadratic bezier
+              const midX = (cx + pos.x) / 2;
+              const midY = (cy + pos.y) / 2;
+              // Add slight perpendicular offset for organic feel
+              const dx = pos.x - cx;
+              const dy = pos.y - cy;
+              const len = Math.sqrt(dx * dx + dy * dy);
+              const perpX = -dy / len * 18;
+              const perpY = dx / len * 18;
+              const ctrlX = midX + perpX;
+              const ctrlY = midY + perpY;
+
+              return (
+                <g key={`line-${i}`}>
+                  <path
+                    d={`M ${cx} ${cy} Q ${ctrlX} ${ctrlY} ${pos.x} ${pos.y}`}
+                    fill="none"
+                    stroke={color.bg}
+                    strokeWidth="2"
+                    strokeDasharray="6 4"
+                    opacity="0.35"
+                    className="animate-fade-in"
+                    style={{ animationDelay: `${200 + i * 80}ms` }}
+                  />
+                  {/* Small heart on the midpoint */}
+                  <circle
+                    cx={ctrlX}
+                    cy={ctrlY}
+                    r="3"
+                    fill={color.bg}
+                    opacity="0.5"
+                  />
+                </g>
+              );
+            })}
+
+            {/* Member nodes */}
+            {memberPositions.map((pos, i) => {
+              const m = members[i];
+              const color = MEMBER_COLORS[i % MEMBER_COLORS.length];
+              const initials = getInitials(m.connected_name || 'U');
+
+              return (
+                <g
+                  key={m.id}
+                  filter="url(#node-shadow)"
+                  className="animate-scale-in cursor-pointer"
+                  style={{ animationDelay: `${300 + i * 100}ms`, transformOrigin: `${pos.x}px ${pos.y}px` }}
                 >
-                  <GripVertical className="w-3.5 h-3.5 opacity-40 flex-shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate leading-tight">
-                      {node.id === 'me' ? 'You' : node.name}
-                    </p>
-                    {node.username && (
-                      <p className={`text-[10px] truncate font-mono ${node.id === 'me' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                        @{node.username}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+                  {/* Outer ring */}
+                  <circle
+                    cx={pos.x}
+                    cy={pos.y}
+                    r={memberR + 4}
+                    fill="none"
+                    stroke={color.bg}
+                    strokeWidth="2"
+                    opacity="0.25"
+                  />
+                  {/* Main circle */}
+                  <circle
+                    cx={pos.x}
+                    cy={pos.y}
+                    r={memberR}
+                    fill={color.light}
+                    stroke={color.bg}
+                    strokeWidth="2.5"
+                  />
+                  {/* Initials */}
+                  <text
+                    x={pos.x}
+                    y={pos.y - 2}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill={color.bg}
+                    fontSize="14"
+                    fontWeight="700"
+                    fontFamily="var(--font-display)"
+                    letterSpacing="1"
+                  >
+                    {initials}
+                  </text>
+                  {/* Name below */}
+                  <text
+                    x={pos.x}
+                    y={pos.y + memberR + 16}
+                    textAnchor="middle"
+                    fill="hsl(24 20% 16%)"
+                    fontSize="12"
+                    fontWeight="600"
+                    fontFamily="var(--font-display)"
+                  >
+                    {m.connected_name?.length > 14 ? m.connected_name.slice(0, 13) + '…' : m.connected_name}
+                  </text>
+                  {/* Username below name */}
+                  <text
+                    x={pos.x}
+                    y={pos.y + memberR + 30}
+                    textAnchor="middle"
+                    fill="hsl(24 10% 46%)"
+                    fontSize="10"
+                    fontFamily="var(--font-body)"
+                  >
+                    @{m.connected_username}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* Center node (You) — rendered last to be on top */}
+            <g filter="url(#center-glow)" className="animate-scale-in">
+              {/* Pulsing ring */}
+              <circle
+                cx={cx}
+                cy={cy}
+                r={centerR + 8}
+                fill="none"
+                stroke="hsl(18 62% 45%)"
+                strokeWidth="2"
+                opacity="0.15"
+              >
+                <animate attributeName="r" values={`${centerR + 6};${centerR + 14};${centerR + 6}`} dur="3s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.15;0.05;0.15" dur="3s" repeatCount="indefinite" />
+              </circle>
+              {/* Outer ring */}
+              <circle
+                cx={cx}
+                cy={cy}
+                r={centerR + 4}
+                fill="none"
+                stroke="hsl(18 62% 45%)"
+                strokeWidth="2.5"
+                opacity="0.3"
+              />
+              {/* Main circle */}
+              <circle
+                cx={cx}
+                cy={cy}
+                r={centerR}
+                fill="hsl(18 62% 45%)"
+              />
+              {/* Inner highlight */}
+              <circle
+                cx={cx}
+                cy={cy - 6}
+                r={centerR - 8}
+                fill="hsl(18 62% 55%)"
+                opacity="0.3"
+              />
+              {/* Initials */}
+              <text
+                x={cx}
+                y={cy - 3}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill="hsl(36 33% 97%)"
+                fontSize="18"
+                fontWeight="700"
+                fontFamily="var(--font-display)"
+                letterSpacing="1.5"
+              >
+                {getInitials(myName)}
+              </text>
+              {/* Name below */}
+              <text
+                x={cx}
+                y={cy + centerR + 18}
+                textAnchor="middle"
+                fill="hsl(24 20% 16%)"
+                fontSize="14"
+                fontWeight="700"
+                fontFamily="var(--font-display)"
+              >
+                {myName}
+              </text>
+              {myUsername && (
+                <text
+                  x={cx}
+                  y={cy + centerR + 33}
+                  textAnchor="middle"
+                  fill="hsl(24 10% 46%)"
+                  fontSize="11"
+                  fontFamily="var(--font-body)"
+                >
+                  @{myUsername}
+                </text>
+              )}
+            </g>
+          </svg>
         </div>
       )}
 
       {/* Connection List */}
-      <div className="animate-reveal-up stagger-2 space-y-3">
-        <h3 className="font-display text-lg font-semibold text-foreground">
-          Connected Members ({(connections as any[]).length})
-        </h3>
-        {isLoading && <p className="text-muted-foreground text-center py-8">Loading…</p>}
-
-        {!isLoading && (connections as any[]).length === 0 && !showAddForm && (
-          <div className="text-center py-12">
-            <User className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-muted-foreground">No family members connected yet</p>
-            <p className="text-sm text-muted-foreground/70 mt-1">
-              Click "Add Member" and enter a family member's username & safeword
-            </p>
-          </div>
-        )}
-
-        {(connections as any[]).map((c) => (
-          <div
-            key={c.id}
-            className="bg-card border border-border rounded-xl p-5 flex items-center gap-4 hover:shadow-md hover:shadow-foreground/5 transition-all duration-300"
-          >
-            <div className="w-11 h-11 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
-              <User className="w-5 h-5 text-accent" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="font-medium text-foreground">{c.connected_name}</p>
-              <p className="text-xs text-muted-foreground">@{c.connected_username} · Connected family member</p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-destructive flex-shrink-0"
-              onClick={() => disconnect.mutate(c.id)}
-            >
-              <Unlink className="w-4 h-4" />
-            </Button>
-          </div>
-        ))}
-      </div>
+      {!isLoading && members.length > 0 && (
+        <div className="animate-reveal-up stagger-2 space-y-3">
+          <h3 className="font-display text-lg font-semibold text-foreground">
+            Connected Members ({members.length})
+          </h3>
+          {members.map((c: any, i: number) => {
+            const color = MEMBER_COLORS[i % MEMBER_COLORS.length];
+            return (
+              <div
+                key={c.id}
+                className="bg-card border border-border rounded-xl p-4 flex items-center gap-4 hover:shadow-md transition-all duration-300 active:scale-[0.98]"
+              >
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold font-display"
+                  style={{ backgroundColor: color.light, color: color.bg, border: `2px solid ${color.bg}` }}
+                >
+                  {getInitials(c.connected_name || 'U')}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-foreground">{c.connected_name}</p>
+                  <p className="text-xs text-muted-foreground font-mono">@{c.connected_username}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-destructive flex-shrink-0"
+                  onClick={() => disconnect.mutate(c.id)}
+                >
+                  <Unlink className="w-4 h-4" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
