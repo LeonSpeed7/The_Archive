@@ -49,23 +49,17 @@ const LEVEL_GAP = 140;
 const PAD_X = 100;
 const PAD_Y = 70;
 const NODE_H = 48;
-const NODE_MIN_W = 80;
-const NODE_CHAR_W = 7;
+const NODE_FIXED_W = 100;   // fixed width for all rectangles
 const YOU_EXTRA = 6;
-const CIRCLE_PAD = 12;
-const CIRCLE_MIN_R = 22;
-const CIRCLE_CHAR_W = 3.8;
+const FIXED_R = 28;         // fixed radius for all circles/diamonds
+const YOU_EXTRA_R = 3;
 
-function measureNodeW(name: string, isYou?: boolean): number {
-  const label = isYou ? 'You' : name;
-  const textW = label.length * NODE_CHAR_W + 24;
-  return Math.max(NODE_MIN_W, textW) + (isYou ? YOU_EXTRA : 0);
+function measureNodeW(_name: string, isYou?: boolean): number {
+  return NODE_FIXED_W + (isYou ? YOU_EXTRA : 0);
 }
 
-function measureNodeR(name: string, isYou?: boolean): number {
-  const label = isYou ? 'You' : name;
-  const textBasedR = label.length * CIRCLE_CHAR_W + CIRCLE_PAD;
-  return Math.max(CIRCLE_MIN_R, textBasedR) + (isYou ? 3 : 0);
+function measureNodeR(_name: string, isYou?: boolean): number {
+  return FIXED_R + (isYou ? YOU_EXTRA_R : 0);
 }
 
 /* ─── Helpers ─── */
