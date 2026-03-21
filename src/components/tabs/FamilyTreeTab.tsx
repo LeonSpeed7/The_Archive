@@ -38,16 +38,18 @@ const GENERATION_LABELS: Record<number, string> = {
 };
 
 const GENDER_CONFIG: Record<string, { shape: 'circle' | 'rect' | 'diamond'; fill: string; stroke: string; label: string }> = {
-  male:             { shape: 'rect',    fill: 'hsl(210 45% 92%)', stroke: 'hsl(210 45% 50%)', label: 'Male (Rectangle)' },
-  female:           { shape: 'circle',  fill: 'hsl(340 45% 92%)', stroke: 'hsl(340 45% 55%)', label: 'Female (Circle)' },
-  other:            { shape: 'diamond', fill: 'hsl(45 60% 92%)',  stroke: 'hsl(45 60% 50%)',  label: 'Other (Diamond)' },
-  prefer_not_to_say:{ shape: 'rect',    fill: 'hsl(0 0% 92%)',    stroke: 'hsl(0 0% 55%)',    label: 'Unspecified' },
+  male:             { shape: 'rect',    fill: 'hsl(210 45% 94%)', stroke: 'hsl(210 45% 42%)', label: 'Male (Square)' },
+  female:           { shape: 'circle',  fill: 'hsl(340 45% 94%)', stroke: 'hsl(340 45% 48%)', label: 'Female (Circle)' },
+  other:            { shape: 'diamond', fill: 'hsl(45 60% 94%)',  stroke: 'hsl(45 60% 45%)',  label: 'Other (Diamond)' },
+  prefer_not_to_say:{ shape: 'rect',    fill: 'hsl(0 0% 94%)',    stroke: 'hsl(0 0% 50%)',    label: 'Unspecified' },
 };
 
-const NODE_SPACE_X = 170;
-const ROW_HEIGHT = 155;
-const NODE_R = 26;
-const YOU_R = 34;
+const NODE_W = 120;
+const NODE_H = 56;
+const NODE_R = 28; // circle/diamond radius
+const LEVEL_GAP = 120;
+const SIBLING_GAP = 160;
+const SPOUSE_GAP = 140;
 
 /* ─── Helpers ─── */
 
@@ -91,83 +93,197 @@ function computeLayout(members: any[], myName: string, myUsername: string, myGen
 
   const sortedGens = [...genGroups.keys()].sort((a, b) => a - b);
   const maxInRow = Math.max(...[...genGroups.values()].map(g => g.length));
-  const canvasW = Math.max(700, maxInRow * NODE_SPACE_X + 200);
+  const canvasW = Math.max(700, maxInRow * SIBLING_GAP + 200);
   const centerX = canvasW / 2;
   const padding = 80;
 
   const positions: NPos[] = [];
   for (const gen of sortedGens) {
     const group = genGroups.get(gen)!;
-    // Sort so "You" is centered in gen 0
     if (gen === 0) group.sort((a, b) => (a.isYou ? -1 : 0) - (b.isYou ? -1 : 0));
-    const y = padding + (sortedGens.indexOf(gen)) * ROW_HEIGHT;
-    const startX = centerX - (group.length - 1) * NODE_SPACE_X / 2;
-    group.forEach((node, i) => {
-      positions.push({ x: startX + i * NODE_SPACE_X, y, node });
-    });
+    const y = padding + sortedGens.indexOf(gen) * LEVEL_GAP;
+    
+    // Position spouses closer together in generation 0
+    if (gen === 0) {
+      const you = group.find(n => n.isYou);
+      const spouses = group.filter(n => n.relationship === 'spouse');
+      const others = group.filter(n => !n.isYou && n.relationship !== 'spouse');
+      const arranged = you ? [you, ...spouses, ...others] : group;
+      
+      let x = centerX - ((arranged.length - 1) * SIBLING_GAP) / 2;
+      arranged.forEach((node, i) => {
+        // Spouses are closer to "You"
+        const actualX = i === 0 ? x : (i <= spouses.length ? x + i * SPOUSE_GAP : x + spouses.length * SPOUSE_GAP + (i - spouses.length) * SIBLING_GAP);
+        positions.push({ x: i === 0 ? centerX : actualX, y, node });
+      });
+    } else {
+      const startX = centerX - ((group.length - 1) * SIBLING_GAP) / 2;
+      group.forEach((node, i) => {
+        positions.push({ x: startX + i * SIBLING_GAP, y, node });
+      });
+    }
   }
 
-  const canvasH = padding * 2 + sortedGens.length * ROW_HEIGHT;
+  const canvasH = padding * 2 + sortedGens.length * LEVEL_GAP;
   return { positions, canvasW, canvasH, sortedGens, genGroups };
 }
 
-/* ─── SVG Node Renderer ─── */
+/* ─── SVG Node Shape (Box/Circle/Diamond) ─── */
 
-function NodeShape({ x, y, node, onClick }: { x: number; y: number; node: TNode; onClick?: () => void }) {
+function NodeShape({ x, y, node }: { x: number; y: number; node: TNode }) {
   const gc = getGender(node.gender);
-  const r = node.isYou ? YOU_R : NODE_R;
-  const sw = node.isYou ? 3 : 2;
   const ini = initials(node.name);
-  const truncName = node.name.length > 16 ? node.name.slice(0, 15) + '…' : node.name;
+  const truncName = node.name.length > 14 ? node.name.slice(0, 13) + '…' : node.name;
+  const isYou = !!node.isYou;
+  const strokeW = isYou ? 3 : 2;
+
+  // Shape dimensions
+  const w = isYou ? NODE_W + 16 : NODE_W;
+  const h = isYou ? NODE_H + 8 : NODE_H;
+  const r = isYou ? NODE_R + 4 : NODE_R;
 
   return (
-    <g className="cursor-pointer" onClick={onClick} style={{ transition: 'opacity 0.3s' }}>
-      {/* Shape */}
-      {gc.shape === 'circle' ? (
-        <circle cx={x} cy={y} r={r} fill={gc.fill} stroke={gc.stroke} strokeWidth={sw} />
-      ) : gc.shape === 'diamond' ? (
-        <polygon
-          points={`${x},${y - r} ${x + r * 0.9},${y} ${x},${y + r} ${x - r * 0.9},${y}`}
-          fill={gc.fill} stroke={gc.stroke} strokeWidth={sw}
-        />
-      ) : (
-        <rect x={x - r * 1.3} y={y - r * 0.85} width={r * 2.6} height={r * 1.7} rx={8}
-          fill={gc.fill} stroke={gc.stroke} strokeWidth={sw}
-        />
+    <g className="cursor-pointer" style={{ transition: 'opacity 0.3s' }}>
+      {/* Glow for "You" */}
+      {isYou && gc.shape === 'rect' && (
+        <rect x={x - w / 2 - 4} y={y - h / 2 - 4} width={w + 8} height={h + 8} rx={14}
+          fill="none" stroke={gc.stroke} strokeWidth={1} opacity={0.15}
+        >
+          <animate attributeName="opacity" values="0.15;0.05;0.15" dur="3s" repeatCount="indefinite" />
+        </rect>
       )}
-
-      {/* Pulse ring for "You" */}
-      {node.isYou && (
-        <circle cx={x} cy={y} r={r + 8} fill="none" stroke={gc.stroke} strokeWidth={1.5} opacity={0.2}>
-          <animate attributeName="r" values={`${r + 6};${r + 14};${r + 6}`} dur="3s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.2;0.06;0.2" dur="3s" repeatCount="indefinite" />
+      {isYou && gc.shape === 'circle' && (
+        <circle cx={x} cy={y} r={r + 6} fill="none" stroke={gc.stroke} strokeWidth={1} opacity={0.15}>
+          <animate attributeName="opacity" values="0.15;0.05;0.15" dur="3s" repeatCount="indefinite" />
         </circle>
       )}
 
+      {/* Main shape */}
+      {gc.shape === 'rect' && (
+        <rect x={x - w / 2} y={y - h / 2} width={w} height={h} rx={10}
+          fill={gc.fill} stroke={gc.stroke} strokeWidth={strokeW}
+          className="drop-shadow-sm"
+        />
+      )}
+      {gc.shape === 'circle' && (
+        <circle cx={x} cy={y} r={r} fill={gc.fill} stroke={gc.stroke} strokeWidth={strokeW}
+          className="drop-shadow-sm"
+        />
+      )}
+      {gc.shape === 'diamond' && (
+        <polygon
+          points={`${x},${y - r} ${x + r},${y} ${x},${y + r} ${x - r},${y}`}
+          fill={gc.fill} stroke={gc.stroke} strokeWidth={strokeW}
+          className="drop-shadow-sm"
+        />
+      )}
+
       {/* Initials */}
-      <text x={x} y={y + 1} textAnchor="middle" dominantBaseline="central"
-        fill={gc.stroke} fontSize={node.isYou ? 16 : 13} fontWeight="700"
-        fontFamily="var(--font-display)" letterSpacing="1"
+      <text x={x} y={y - 4} textAnchor="middle" dominantBaseline="central"
+        fill={gc.stroke} fontSize={isYou ? 15 : 13} fontWeight="700"
+        fontFamily="var(--font-display)" letterSpacing="0.5"
       >
         {ini}
       </text>
 
-      {/* Name below */}
-      <text x={x} y={y + r + 16} textAnchor="middle" fill="hsl(var(--foreground))"
-        fontSize="11" fontWeight="600" fontFamily="var(--font-display)"
+      {/* Name inside shape */}
+      <text x={x} y={y + 12} textAnchor="middle" dominantBaseline="central"
+        fill={gc.stroke} fontSize="9" fontWeight="500"
+        fontFamily="var(--font-body)" opacity={0.8}
       >
-        {node.isYou ? 'You' : truncName}
+        {isYou ? 'You' : truncName}
       </text>
 
-      {/* Username */}
+      {/* Username below */}
       {node.username && (
-        <text x={x} y={y + r + 29} textAnchor="middle" fill="hsl(var(--muted-foreground))"
-          fontSize="9" fontFamily="var(--font-body)"
+        <text x={x} y={y + (gc.shape === 'rect' ? h / 2 + 14 : r + 14)} textAnchor="middle"
+          fill="hsl(var(--muted-foreground))" fontSize="9" fontFamily="var(--font-body)"
         >
           @{node.username}
         </text>
       )}
+    </g>
+  );
+}
 
+/* ─── Connection Lines ─── */
+
+function ConnectionLine({ from, to, relationship }: { from: NPos; to: NPos; relationship: string }) {
+  const rel = getRelConfig(relationship);
+  const fromGc = getGender(from.node.gender);
+  const toGc = getGender(to.node.gender);
+  const dy = to.y - from.y;
+  const dx = to.x - from.x;
+
+  // Calculate exit/entry points based on shapes
+  const getEdgeY = (pos: NPos, direction: 'top' | 'bottom') => {
+    const gc = getGender(pos.node.gender);
+    const isYou = pos.node.isYou;
+    if (gc.shape === 'rect') {
+      const h = isYou ? NODE_H + 8 : NODE_H;
+      return direction === 'bottom' ? pos.y + h / 2 : pos.y - h / 2;
+    }
+    const r = isYou ? NODE_R + 4 : NODE_R;
+    return direction === 'bottom' ? pos.y + r : pos.y - r;
+  };
+
+  // Same generation — horizontal connector
+  if (Math.abs(dy) < 10) {
+    const isSpouse = relationship === 'spouse';
+    const fromEdgeX = from.x + (dx > 0 ? (fromGc.shape === 'rect' ? (from.node.isYou ? (NODE_W + 16) / 2 : NODE_W / 2) : (from.node.isYou ? NODE_R + 4 : NODE_R)) : -(fromGc.shape === 'rect' ? (from.node.isYou ? (NODE_W + 16) / 2 : NODE_W / 2) : (from.node.isYou ? NODE_R + 4 : NODE_R)));
+    const toEdgeX = to.x + (dx > 0 ? -(toGc.shape === 'rect' ? NODE_W / 2 : NODE_R) : (toGc.shape === 'rect' ? NODE_W / 2 : NODE_R));
+
+    if (isSpouse) {
+      // Double line for marriage
+      return (
+        <g>
+          <line x1={fromEdgeX} y1={from.y - 3} x2={toEdgeX} y2={to.y - 3}
+            stroke={rel.color} strokeWidth={1.5} opacity={0.6} />
+          <line x1={fromEdgeX} y1={from.y + 3} x2={toEdgeX} y2={to.y + 3}
+            stroke={rel.color} strokeWidth={1.5} opacity={0.6} />
+        </g>
+      );
+    }
+
+    // Curved horizontal for siblings/cousins
+    const midX = (fromEdgeX + toEdgeX) / 2;
+    const curveY = from.y - 30;
+    return (
+      <g>
+        <path
+          d={`M ${fromEdgeX} ${from.y} C ${fromEdgeX} ${curveY}, ${toEdgeX} ${curveY}, ${toEdgeX} ${to.y}`}
+          fill="none" stroke={rel.color} strokeWidth={1.5}
+          strokeDasharray={rel.dash || undefined} opacity={0.5}
+        />
+        <text x={midX} y={curveY - 4} textAnchor="middle" fill={rel.color}
+          fontSize="8" fontWeight="600" opacity="0.7" fontFamily="var(--font-body)">
+          {rel.label}
+        </text>
+      </g>
+    );
+  }
+
+  // Different generation — vertical tree connector with right angles
+  const fromY = dy > 0 ? getEdgeY(from, 'bottom') : getEdgeY(from, 'top');
+  const toY = dy > 0 ? getEdgeY(to, 'top') : getEdgeY(to, 'bottom');
+  const midY = (fromY + toY) / 2;
+
+  return (
+    <g>
+      {/* Vertical from parent */}
+      <line x1={from.x} y1={fromY} x2={from.x} y2={midY}
+        stroke={rel.color} strokeWidth={1.5} strokeDasharray={rel.dash || undefined} opacity={0.5} />
+      {/* Horizontal bridge */}
+      <line x1={from.x} y1={midY} x2={to.x} y2={midY}
+        stroke={rel.color} strokeWidth={1.5} strokeDasharray={rel.dash || undefined} opacity={0.5} />
+      {/* Vertical to child */}
+      <line x1={to.x} y1={midY} x2={to.x} y2={toY}
+        stroke={rel.color} strokeWidth={1.5} strokeDasharray={rel.dash || undefined} opacity={0.5} />
+      {/* Relationship label */}
+      <text x={(from.x + to.x) / 2} y={midY - 6} textAnchor="middle" fill={rel.color}
+        fontSize="8" fontWeight="600" opacity="0.7" fontFamily="var(--font-body)">
+        {rel.label}
+      </text>
     </g>
   );
 }
@@ -186,7 +302,6 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
 
   const { positions, canvasW, canvasH, sortedGens } = computeLayout(members, myName, myUsername, myGender);
 
-  // Fit to container on mount / data change
   useEffect(() => {
     if (!containerRef.current || positions.length === 0) return;
     const rect = containerRef.current.getBoundingClientRect();
@@ -196,11 +311,6 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
     setPan({ x: (rect.width - canvasW * s) / 2, y: (rect.height - canvasH * s) / 2 });
     setZoom(s);
   }, [canvasW, canvasH, positions.length]);
-
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    // Zoom disabled
-  }, []);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     setDragging(true);
@@ -218,18 +328,8 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
 
   const handlePointerUp = useCallback(() => setDragging(false), []);
 
-  const resetView = useCallback(() => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const scaleX = (rect.width - 24) / canvasW;
-    const scaleY = (rect.height - 24) / canvasH;
-    const s = Math.min(scaleX, scaleY, 1.2);
-    setPan({ x: (rect.width - canvasW * s) / 2, y: (rect.height - canvasH * s) / 2 });
-    setZoom(s);
-  }, [canvasW, canvasH]);
-
   const toggleGen = (gen: number) => {
-    if (gen === 0) return; // Can't collapse your own generation
+    if (gen === 0) return;
     setCollapsedGens(prev => {
       const next = new Set(prev);
       next.has(gen) ? next.delete(gen) : next.add(gen);
@@ -240,23 +340,33 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
   const youPos = positions.find(p => p.node.isYou)!;
   const visiblePositions = positions.filter(p => !collapsedGens.has(p.node.generation));
 
-  // Unique relationship types used
   const usedRels = [...new Set(members.map((m: any) => m.relationship || 'other'))];
   const usedGenders = [...new Set([myGender, ...members.map((m: any) => m.connected_gender || 'prefer_not_to_say')])];
 
   return (
     <div className="space-y-4">
-      {/* Canvas */}
+      {/* Tree Canvas */}
       <div
         ref={containerRef}
-        className="relative w-full rounded-xl border border-border bg-card overflow-hidden select-none"
-        style={{ height: 'clamp(380px, 55vh, 600px)', touchAction: 'none' }}
-        onWheel={handleWheel}
+        className="relative w-full rounded-xl overflow-hidden select-none"
+        style={{
+          height: 'clamp(400px, 58vh, 640px)',
+          touchAction: 'none',
+          background: 'linear-gradient(180deg, hsl(var(--teal-50)) 0%, hsl(var(--background)) 100%)',
+          border: '1px solid hsl(var(--teal-200))',
+        }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
       >
+        {/* Subtle tree trunk decoration */}
+        <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
+          style={{
+            backgroundImage: `radial-gradient(circle at 50% 100%, hsl(var(--teal-600)) 0%, transparent 50%)`,
+          }}
+        />
+
         <div
           style={{
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
@@ -266,118 +376,69 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
         >
           <svg width={canvasW} height={canvasH} viewBox={`0 0 ${canvasW} ${canvasH}`}>
             <defs>
-              <filter id="tree-shadow" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="0" dy="1" stdDeviation="2" floodOpacity="0.06" />
+              <filter id="node-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="hsl(var(--teal-900))" floodOpacity="0.08" />
               </filter>
             </defs>
 
-            {/* Generation row stripes */}
+            {/* Generation labels */}
             {sortedGens.map((gen, gi) => {
-              const y = 80 + gi * ROW_HEIGHT;
+              const y = 80 + gi * LEVEL_GAP;
               const isCollapsed = collapsedGens.has(gen);
               return (
                 <g key={`gen-${gen}`} opacity={isCollapsed ? 0.3 : 1} style={{ transition: 'opacity 0.3s' }}>
-                  <rect x={0} y={y - 45} width={canvasW} height={ROW_HEIGHT - 10}
-                    fill={gen === 0 ? 'hsl(var(--primary) / 0.04)' : gi % 2 === 0 ? 'hsl(var(--foreground) / 0.015)' : 'transparent'}
-                    rx={6}
-                  />
-                  <text x={14} y={y - 28} fill="hsl(var(--muted-foreground))" fontSize="10" fontWeight="600"
-                    fontFamily="var(--font-display)" letterSpacing="1.5" opacity="0.6" style={{ textTransform: 'uppercase' }}
+                  <text x={14} y={y - 36} fill="hsl(var(--teal-500))" fontSize="10" fontWeight="700"
+                    fontFamily="var(--font-display)" letterSpacing="1.5" opacity="0.5"
+                    style={{ textTransform: 'uppercase' } as any}
                   >
                     {GENERATION_LABELS[gen] || `Gen ${gen}`}
                     {isCollapsed ? ' (collapsed)' : ''}
                   </text>
-                </g>
-              );
-            })}
-
-            {/* Connection lines */}
-            {visiblePositions.filter(p => !p.node.isYou).map(p => {
-              const rel = getRelConfig(p.node.relationship);
-              const dy = p.y - youPos.y;
-              const dx = p.x - youPos.x;
-
-              let pathD: string;
-              if (Math.abs(dy) < 10) {
-                // Same generation: horizontal arc
-                const cp = Math.min(Math.abs(dx) * 0.3, 50);
-                pathD = `M ${youPos.x + (dx > 0 ? NODE_R + 8 : -NODE_R - 8)} ${youPos.y}
-                         C ${youPos.x + dx * 0.3} ${youPos.y - cp}
-                           ${p.x - dx * 0.3} ${p.y - cp}
-                           ${p.x + (dx > 0 ? -NODE_R - 8 : NODE_R + 8)} ${p.y}`;
-              } else {
-                // Different generation: vertical bezier
-                const midY = youPos.y + dy * 0.5;
-                const exitY = dy > 0 ? youPos.y + (youPos.node.isYou ? YOU_R : NODE_R) + 4 : youPos.y - (youPos.node.isYou ? YOU_R : NODE_R) - 4;
-                const entryY = dy > 0 ? p.y - NODE_R - 4 : p.y + NODE_R + 4;
-                pathD = `M ${youPos.x} ${exitY}
-                         C ${youPos.x} ${midY}
-                           ${p.x} ${midY}
-                           ${p.x} ${entryY}`;
-              }
-
-              return (
-                <g key={`line-${p.node.id}`}>
-                  <path d={pathD} fill="none" stroke={rel.color} strokeWidth={2}
-                    strokeDasharray={rel.dash || undefined} opacity={0.5}
-                    className="animate-fade-in" style={{ animationDelay: '0.2s' }}
+                  {/* Subtle horizontal guide line */}
+                  <line x1={14} y1={y - 30} x2={canvasW - 14} y2={y - 30}
+                    stroke="hsl(var(--teal-200))" strokeWidth={0.5} opacity={0.4}
+                    strokeDasharray="4 6"
                   />
-                  {/* Relationship label at midpoint */}
-                  {Math.abs(dy) > 10 && (
-                    <text
-                      x={(youPos.x + p.x) / 2 + (dx > 0 ? 8 : -8)}
-                      y={youPos.y + dy * 0.5 - 6}
-                      textAnchor="middle" fill={rel.color} fontSize="8" fontWeight="600"
-                      fontFamily="var(--font-body)" opacity="0.7"
-                    >
-                      {rel.label}
-                    </text>
-                  )}
                 </g>
               );
             })}
+
+            {/* Connection lines (tree branches) */}
+            {visiblePositions.filter(p => !p.node.isYou).map(p => (
+              <ConnectionLine
+                key={`line-${p.node.id}`}
+                from={youPos}
+                to={p}
+                relationship={p.node.relationship}
+              />
+            ))}
 
             {/* Nodes */}
-            {visiblePositions.map(p => (
-              <g key={p.node.id} filter="url(#tree-shadow)" className="animate-scale-in"
-                style={{ animationDelay: `${0.15 + positions.indexOf(p) * 0.06}s`, transformOrigin: `${p.x}px ${p.y}px` }}
+            {visiblePositions.map((p, i) => (
+              <g key={p.node.id} filter="url(#node-shadow)"
+                className="animate-scale-in"
+                style={{ animationDelay: `${0.1 + i * 0.05}s`, transformOrigin: `${p.x}px ${p.y}px` }}
               >
                 <NodeShape x={p.x} y={p.y} node={p.node} />
               </g>
             ))}
-
-            {/* Marriage/partnership connectors (horizontal double-line for spouses in same gen) */}
-            {(() => {
-              const gen0 = visiblePositions.filter(p => p.node.generation === 0);
-              const youP = gen0.find(p => p.node.isYou);
-              const spouses = gen0.filter(p => p.node.relationship === 'spouse');
-              if (!youP || spouses.length === 0) return null;
-              return spouses.map(sp => (
-                <g key={`marriage-${sp.node.id}`}>
-                  <line x1={youP.x + (sp.x > youP.x ? YOU_R + 6 : -YOU_R - 6)} y1={youP.y - 3}
-                    x2={sp.x + (sp.x > youP.x ? -NODE_R - 6 : NODE_R + 6)} y2={sp.y - 3}
-                    stroke="hsl(340 45% 50%)" strokeWidth={1.5} opacity={0.5}
-                  />
-                  <line x1={youP.x + (sp.x > youP.x ? YOU_R + 6 : -YOU_R - 6)} y1={youP.y + 3}
-                    x2={sp.x + (sp.x > youP.x ? -NODE_R - 6 : NODE_R + 6)} y2={sp.y + 3}
-                    stroke="hsl(340 45% 50%)" strokeWidth={1.5} opacity={0.5}
-                  />
-                </g>
-              ));
-            })()}
           </svg>
         </div>
 
-        {/* No zoom controls */}
-
-        {/* Generation collapse toggles */}
+        {/* Collapse toggles */}
         {sortedGens.length > 1 && (
           <div className="absolute bottom-3 left-3 flex flex-wrap gap-1 z-10">
             {sortedGens.filter(g => g !== 0).map(gen => (
               <button
                 key={gen}
                 onClick={() => toggleGen(gen)}
-                className="flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-md bg-card/80 backdrop-blur-sm border border-border text-muted-foreground hover:text-foreground transition-colors active:scale-95"
+                className="flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-md border transition-colors active:scale-95"
+                style={{
+                  backgroundColor: 'hsl(var(--background) / 0.85)',
+                  borderColor: 'hsl(var(--teal-200))',
+                  color: 'hsl(var(--teal-700))',
+                  backdropFilter: 'blur(4px)',
+                }}
               >
                 {collapsedGens.has(gen) ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                 {GENERATION_LABELS[gen] || `Gen ${gen}`}
@@ -386,18 +447,17 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
           </div>
         )}
 
-        {/* Drag hint */}
-        <p className="absolute top-3 left-3 text-[10px] text-muted-foreground/50 pointer-events-none select-none">
+        <p className="absolute top-3 left-3 text-[10px] pointer-events-none select-none"
+          style={{ color: 'hsl(var(--teal-400))' }}>
           Drag to pan
         </p>
       </div>
 
       {/* Legend */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {/* Relationship legend */}
         {usedRels.length > 0 && (
-          <div className="bg-card border border-border rounded-xl p-3">
-            <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Relationships</h4>
+          <div className="rounded-xl p-3" style={{ backgroundColor: 'hsl(var(--teal-50))', border: '1px solid hsl(var(--teal-200))' }}>
+            <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--teal-500))' }}>Relationships</h4>
             <div className="flex flex-wrap gap-x-4 gap-y-1.5">
               {usedRels.map(type => {
                 const rel = getRelConfig(type);
@@ -412,7 +472,6 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
                   </div>
                 );
               })}
-              {/* Marriage indicator */}
               {usedRels.includes('spouse') && (
                 <div className="flex items-center gap-1.5">
                   <svg width="22" height="10" className="flex-shrink-0">
@@ -426,9 +485,8 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
           </div>
         )}
 
-        {/* Gender / shape legend */}
-        <div className="bg-card border border-border rounded-xl p-3">
-          <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Shapes</h4>
+        <div className="rounded-xl p-3" style={{ backgroundColor: 'hsl(var(--teal-50))', border: '1px solid hsl(var(--teal-200))' }}>
+          <h4 className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'hsl(var(--teal-500))' }}>Shapes</h4>
           <div className="flex flex-wrap gap-x-4 gap-y-1.5">
             {Object.entries(GENDER_CONFIG).filter(([k]) => usedGenders.includes(k)).map(([key, cfg]) => (
               <div key={key} className="flex items-center gap-1.5">
@@ -478,7 +536,6 @@ export default function FamilyTreeTab() {
 
   const members = connections as any[];
 
-
   const connect = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.rpc('connect_by_safeword', {
@@ -527,9 +584,9 @@ export default function FamilyTreeTab() {
         </Button>
       </div>
 
-      {/* Add member form */}
       {showAddForm && (
-        <div className="animate-fade-in bg-card border border-border rounded-xl p-6 space-y-4">
+        <div className="animate-fade-in rounded-xl p-6 space-y-4"
+          style={{ backgroundColor: 'hsl(var(--teal-50))', border: '1px solid hsl(var(--teal-200))' }}>
           <h3 className="font-display text-lg font-semibold text-foreground">Add a Family Member</h3>
           <p className="text-sm text-muted-foreground">
             Enter their username, safeword, and your relationship to connect.
@@ -562,9 +619,13 @@ export default function FamilyTreeTab() {
                   onClick={() => setRelationship(rel.value)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 active:scale-[0.96] ${
                     relationship === rel.value
-                      ? 'border-primary bg-primary text-primary-foreground shadow-sm'
-                      : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                      ? 'text-white shadow-sm'
+                      : 'bg-background text-muted-foreground hover:text-foreground'
                   }`}
+                  style={relationship === rel.value
+                    ? { backgroundColor: 'hsl(var(--teal-500))', borderColor: 'hsl(var(--teal-500))' }
+                    : { borderColor: 'hsl(var(--teal-200))' }
+                  }
                 >
                   {rel.label}
                 </button>
@@ -575,6 +636,8 @@ export default function FamilyTreeTab() {
             <Button
               onClick={() => connect.mutate()}
               disabled={!safeword.trim() || !username.trim() || connect.isPending}
+              style={{ backgroundColor: 'hsl(var(--teal-500))' }}
+              className="text-white"
             >
               {connect.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Connect'}
             </Button>
@@ -583,12 +646,11 @@ export default function FamilyTreeTab() {
         </div>
       )}
 
-      {/* Tree */}
       {isLoading && <p className="text-muted-foreground text-center py-8">Loading…</p>}
 
       {!isLoading && members.length === 0 && !showAddForm && (
         <div className="text-center py-16 animate-fade-in">
-          <TreePine className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+          <TreePine className="w-12 h-12 mx-auto mb-4" style={{ color: 'hsl(var(--teal-300))' }} />
           <p className="text-muted-foreground font-medium">Your family tree is empty</p>
           <p className="text-sm text-muted-foreground/70 mt-1">
             Click "Add Member" and enter a family member's username & safeword to start building
@@ -617,9 +679,12 @@ export default function FamilyTreeTab() {
             return (
               <div
                 key={c.id}
-                className="bg-card border border-border rounded-xl p-4 flex items-center gap-4 hover:shadow-md transition-all duration-300 active:scale-[0.98]"
+                className="rounded-xl p-4 flex items-center gap-4 transition-all duration-300 active:scale-[0.98]"
+                style={{
+                  backgroundColor: 'hsl(var(--teal-50))',
+                  border: '1px solid hsl(var(--teal-200))',
+                }}
               >
-                {/* Gender-shaped mini icon */}
                 <svg width="36" height="36" viewBox="0 0 36 36" className="flex-shrink-0">
                   {gc.shape === 'circle' ? (
                     <circle cx="18" cy="18" r="15" fill={gc.fill} stroke={gc.stroke} strokeWidth="2" />
