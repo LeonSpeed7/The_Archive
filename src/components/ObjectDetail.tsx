@@ -352,10 +352,10 @@ function StoriesSection({
   queryClient: any;
 }) {
   const [newStory, setNewStory] = useState('');
-  const [storyVisibility, setStoryVisibility] = useState<'global' | 'family'>('global');
+  const [storyVisibility, setStoryVisibility] = useState<'global' | 'family'>(isPersonal ? 'family' : 'global');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
-  const [editVisibility, setEditVisibility] = useState<'global' | 'family'>('global');
+  const [editVisibility, setEditVisibility] = useState<'global' | 'family'>(isPersonal ? 'family' : 'global');
 
   // Fetch family connections to determine name display
   const { data: familyIds } = useQuery({
@@ -464,7 +464,7 @@ function StoriesSection({
                 />
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-muted-foreground">Visibility:</span>
-                  <VisibilityToggle value={editVisibility} onChange={setEditVisibility} />
+                  <VisibilityToggle value={editVisibility} onChange={setEditVisibility} isPersonal={isPersonal} />
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -523,7 +523,7 @@ function StoriesSection({
         />
         <div className="flex items-center gap-3 mb-3">
           <span className="text-xs text-muted-foreground">Who can see this?</span>
-          <VisibilityToggle value={storyVisibility} onChange={setStoryVisibility} />
+          <VisibilityToggle value={storyVisibility} onChange={setStoryVisibility} isPersonal={isPersonal} />
         </div>
         <Button
           onClick={() => addStory.mutate()}
@@ -541,10 +541,22 @@ function StoriesSection({
 function VisibilityToggle({
   value,
   onChange,
+  isPersonal = false,
 }: {
   value: 'global' | 'family';
   onChange: (v: 'global' | 'family') => void;
+  isPersonal?: boolean;
 }) {
+  if (isPersonal) {
+    return (
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Lock className="w-3 h-3 text-accent" />
+        <span className="font-medium text-accent">Family only</span>
+        <span className="text-[10px]">(personal objects can't be shared publicly)</span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex rounded-lg border border-border overflow-hidden">
       <button
