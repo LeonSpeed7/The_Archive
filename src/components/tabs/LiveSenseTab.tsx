@@ -92,6 +92,7 @@ export default function LiveSenseTab() {
       if (data?.error) throw new Error(data.error);
       if (data?.items && Array.isArray(data.items)) {
         setDetectedItems(data.items);
+        if (data.items.length > 0) setShowPanel(true);
       }
     } catch (err: any) {
       console.error('Live sense error:', err);
