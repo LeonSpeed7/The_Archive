@@ -157,7 +157,7 @@ export default function PersonalDatabaseTab() {
           title="Public"
           icon={<Globe className="w-4 h-4" />}
           description="Visible to everyone"
-          badgeVariant="default"
+          badgeVariant="secondary"
           items={publicItems}
           sortKey={publicSort}
           onSortChange={setPublicSort}
