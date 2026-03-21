@@ -1,11 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Archive, Users, ArrowLeft, Sparkles, Loader2, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
+import { Search, Archive, Users, ArrowLeft, Sparkles, Loader2, ChevronLeft, ChevronRight, Lock, Wand2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import ObjectDetail from '@/components/ObjectDetail';
+import { toast } from 'sonner';
 
 interface TimelineEntry {
   year: string;
@@ -22,26 +23,58 @@ const TIMELINE_COLORS = [
   { bg: 'hsl(var(--teal-400))', light: 'hsl(var(--teal-100))' },
   { bg: 'hsl(var(--teal-cta))', light: 'hsl(var(--teal-50))' },
   { bg: 'hsl(var(--teal-600))', light: 'hsl(var(--teal-100))' },
-  { bg: 'hsl(var(--color-highlight))', light: 'hsl(48 87% 93%)' },
-  { bg: 'hsl(var(--color-success))', light: 'hsl(145 50% 93%)' },
+  { bg: 'hsl(48 87% 55%)', light: 'hsl(48 87% 93%)' },
+  { bg: 'hsl(145 50% 45%)', light: 'hsl(145 50% 93%)' },
   { bg: 'hsl(var(--teal-700))', light: 'hsl(var(--teal-100))' },
 ];
 
 export default function GlobalDatabaseTab() {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
+  const [aiSearchIds, setAiSearchIds] = useState<string[] | null>(null);
+  const [isAiSearching, setIsAiSearching] = useState(false);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [selectedSource, setSelectedSource] = useState<'global' | 'personal'>('global');
   const [evolutionView, setEvolutionView] = useState<EvolutionTimeline | null>(null);
   const [generatingFor, setGeneratingFor] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // AI search with debounce
+  useEffect(() => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+
+    if (!search.trim()) {
+      setAiSearchIds(null);
+      setIsAiSearching(false);
+      return;
+    }
+
+    setIsAiSearching(true);
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('ai-search', {
+          body: { query: search.trim() },
+        });
+        if (error) throw error;
+        if (data.error) throw new Error(data.error);
+        setAiSearchIds(data.ids || []);
+      } catch (err: any) {
+        console.error('AI search error:', err);
+        toast.error('AI search failed, falling back to text search');
+        setAiSearchIds(null);
+      } finally {
+        setIsAiSearching(false);
+      }
+    }, 600);
+
+    return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
+  }, [search]);
 
   const { data: objects, isLoading } = useQuery({
-    queryKey: ['all-objects', search],
+    queryKey: ['all-objects'],
     queryFn: async () => {
-      let query = supabase.from('objects').select('*').order('created_at', { ascending: true });
-      if (search.trim()) query = query.ilike('name', `%${search}%`);
-      const { data, error } = await query.limit(100);
+      const { data, error } = await supabase.from('objects').select('*').order('created_at', { ascending: true }).limit(200);
       if (error) throw error;
       return data;
     },
