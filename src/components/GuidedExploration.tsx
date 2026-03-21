@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, ChevronRight, ChevronLeft, Camera, Globe, BookLock, TreePine, Sparkles, Users, Shield, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-type Tab = 'camera' | 'personal' | 'database' | 'tree';
+type Tab = 'camera' | 'livesense' | 'personal' | 'database' | 'tree';
 
 interface Step {
   tab: Tab;
