@@ -21,9 +21,10 @@ serve(async (req) => {
 2. Provide a clear, concise name for it
 3. Estimate when this type of object was first created or when this specific object likely dates from (e.g. "~1920s", "circa 500 BC", "Mid-18th century")
 4. Write a rich historical description (2-4 paragraphs) covering its origins, cultural significance, typical era/region, and any interesting facts
+5. Provide a bounding box for the main object in the image as normalized coordinates [x_min, y_min, x_max, y_max] where each value is between 0 and 1. This should tightly crop around the identified object, excluding background clutter.
 
 Respond ONLY with valid JSON in this exact format:
-{"name": "Object Name", "description": "Brief one-line description", "estimated_origin": "~1920s", "history": "Detailed historical context..."}`
+{"name": "Object Name", "description": "Brief one-line description", "estimated_origin": "~1920s", "history": "Detailed historical context...", "crop": [0.1, 0.05, 0.9, 0.85]}`
       },
     ];
 
@@ -35,7 +36,7 @@ Respond ONLY with valid JSON in this exact format:
       });
     }
 
-    let textPrompt = "Identify this object, estimate when it was created/originated, and provide its historical background.";
+    let textPrompt = "Identify this object, estimate when it was created/originated, provide its historical background, and return a tight bounding box around the main object in the image.";
     if (userHint) {
       textPrompt += ` The user thinks it might be: "${userHint}".`;
     }
@@ -82,7 +83,7 @@ Respond ONLY with valid JSON in this exact format:
     try {
       result = JSON.parse(jsonStr);
     } catch {
-      result = { name: userHint || "Unknown Object", description: "AI-identified object", estimated_origin: "Unknown", history: raw };
+      result = { name: userHint || "Unknown Object", description: "AI-identified object", estimated_origin: "Unknown", history: raw, crop: null };
     }
 
     return new Response(JSON.stringify(result), {
