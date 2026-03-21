@@ -69,7 +69,7 @@ function initials(n: string) { return n.split(' ').map(w => w[0]).join('').toUpp
 interface TNode {
   id: string; name: string; username: string; gender: string;
   relationship: string; generation: number; isYou?: boolean;
-  userId?: string;
+  userId?: string; bio?: string; note?: string;
 }
 interface NPos { x: number; y: number; node: TNode; }
 
@@ -87,6 +87,8 @@ function computeLayout(members: any[], myName: string, myUsername: string, myGen
       relationship: m.relationship || 'other',
       generation: GENERATION_MAP[m.relationship] ?? 0,
       userId: m.connected_user_id,
+      bio: m.connected_bio || '',
+      note: m.note || '',
     })),
   ];
 
@@ -446,13 +448,19 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
               <ConnectionLine key={`c-${p.node.id}`} from={youPos} to={p} relationship={p.node.relationship} />
             ))}
 
-            {/* Nodes */}
-            {visiblePositions.map((p, i) => (
-              <g key={p.node.id} filter="url(#node-shadow)" className="animate-scale-in"
-                style={{ animationDelay: `${0.08 + i * 0.04}s`, transformOrigin: `${p.x}px ${p.y}px` }}>
-                <NodeShape x={p.x} y={p.y} node={p.node} />
-              </g>
-            ))}
+            {/* Nodes with hover tooltips */}
+            {visiblePositions.map((p, i) => {
+              const tooltipText = p.node.note || p.node.bio || '';
+              return (
+                <g key={p.node.id} filter="url(#node-shadow)" className="animate-scale-in"
+                  style={{ animationDelay: `${0.08 + i * 0.04}s`, transformOrigin: `${p.x}px ${p.y}px` }}>
+                  <NodeShape x={p.x} y={p.y} node={p.node} />
+                  {tooltipText && (
+                    <title>{p.node.name}: {tooltipText}</title>
+                  )}
+                </g>
+              );
+            })}
           </svg>
         </div>
 
@@ -545,6 +553,7 @@ export default function FamilyTreeTab() {
   const [username, setUsername] = useState('');
   const [safeword, setSafeword] = useState('');
   const [relationship, setRelationship] = useState('parent');
+  const [memberNote, setMemberNote] = useState('');
 
   const { data: myProfile } = useQuery({
     queryKey: ['my-profile', user?.id],
@@ -570,11 +579,27 @@ export default function FamilyTreeTab() {
         p_relationship: relationship,
       });
       if (error) throw error;
+      // If a note was provided, update the connection
+      if (memberNote.trim() && data) {
+        // Find the connection just created
+        const { data: conn } = await supabase
+          .from('family_connections')
+          .select('id')
+          .or(`requester_id.eq.${user!.id},target_id.eq.${user!.id}`)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        if (conn) {
+          await supabase.from('family_connections')
+            .update({ note: memberNote.trim() } as any)
+            .eq('id', conn.id);
+        }
+      }
       return data;
     },
     onSuccess: () => {
       toast.success('Family member added!');
-      setSafeword(''); setUsername(''); setRelationship('parent');
+      setSafeword(''); setUsername(''); setRelationship('parent'); setMemberNote('');
       setShowAddForm(false);
       queryClient.invalidateQueries({ queryKey: ['family-connections'] });
     },
@@ -645,6 +670,18 @@ export default function FamilyTreeTab() {
               ))}
             </div>
           </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Note about them <span className="text-muted-foreground font-normal">(optional)</span></label>
+            <textarea
+              value={memberNote}
+              onChange={(e) => setMemberNote(e.target.value)}
+              placeholder="e.g. Loves gardening, taught me to cook…"
+              maxLength={200}
+              rows={2}
+              className="w-full px-3 py-2 text-sm rounded-lg border bg-background text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+              style={{ borderColor: 'hsl(var(--teal-200))' }}
+            />
+          </div>
           <div className="flex gap-2">
             <Button onClick={() => connect.mutate()}
               disabled={!safeword.trim() || !username.trim() || connect.isPending}
@@ -705,6 +742,11 @@ export default function FamilyTreeTab() {
                       {rel.label}
                     </span>
                   </div>
+                  {(c.connected_bio || c.note) && (
+                    <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed line-clamp-2">
+                      {c.note || c.connected_bio}
+                    </p>
+                  )}
                 </div>
                 <Button variant="ghost" size="icon"
                   className="text-muted-foreground hover:text-destructive flex-shrink-0"
