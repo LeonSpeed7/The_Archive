@@ -261,6 +261,7 @@ export type Database = {
           name: string
           updated_at: string
           user_id: string
+          visibility: string
         }
         Insert: {
           created_at?: string
@@ -272,6 +273,7 @@ export type Database = {
           name: string
           updated_at?: string
           user_id: string
+          visibility?: string
         }
         Update: {
           created_at?: string
@@ -283,6 +285,7 @@ export type Database = {
           name?: string
           updated_at?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: []
       }
@@ -407,6 +410,7 @@ export type Database = {
           name: string
           updated_at: string
           user_id: string
+          visibility: string
         }[]
         SetofOptions: {
           from: "*"
@@ -427,6 +431,7 @@ export type Database = {
           name: string
           updated_at: string
           user_id: string
+          visibility: string
         }[]
         SetofOptions: {
           from: "*"
