@@ -13,19 +13,22 @@ export default function FamilyTreeTab() {
   const queryClient = useQueryClient();
   const { data: connections = [], isLoading } = useConnections();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [memberName, setMemberName] = useState('');
   const [safeword, setSafeword] = useState('');
 
   const connect = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.rpc('connect_by_safeword', {
         p_safeword: safeword.trim(),
+        p_nickname: memberName.trim(),
       });
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      toast.success('Family member added!');
+      toast.success(`${memberName.trim() || 'Family member'} added!`);
       setSafeword('');
+      setMemberName('');
       setShowAddForm(false);
       queryClient.invalidateQueries({ queryKey: ['family-connections'] });
     },
@@ -62,24 +65,36 @@ export default function FamilyTreeTab() {
         <div className="animate-reveal-up bg-card border border-border rounded-xl p-6 space-y-4">
           <h3 className="font-display text-lg font-semibold text-foreground">Add a Family Member</h3>
           <p className="text-sm text-muted-foreground">
-            Enter their safeword to connect. Once connected, you'll both see each other's archived objects in search results.
+            Enter their name and safeword to connect. Once connected, you'll both see each other's archived objects in search results.
           </p>
-          <div className="flex gap-2">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Name *</label>
+            <Input
+              value={memberName}
+              onChange={(e) => setMemberName(e.target.value)}
+              placeholder="e.g. Grandma Rose, Uncle James…"
+              className="bg-background"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Their safeword *</label>
             <Input
               value={safeword}
               onChange={(e) => setSafeword(e.target.value)}
               placeholder="Enter their safeword…"
               className="bg-background"
-              onKeyDown={(e) => e.key === 'Enter' && safeword.trim() && connect.mutate()}
+              onKeyDown={(e) => e.key === 'Enter' && safeword.trim() && memberName.trim() && connect.mutate()}
             />
+          </div>
+          <div className="flex gap-2">
             <Button
               onClick={() => connect.mutate()}
-              disabled={!safeword.trim() || connect.isPending}
+              disabled={!safeword.trim() || !memberName.trim() || connect.isPending}
             >
               {connect.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Connect'}
             </Button>
+            <Button variant="ghost" onClick={() => setShowAddForm(false)}>Cancel</Button>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => setShowAddForm(false)}>Cancel</Button>
         </div>
       )}
 
@@ -106,8 +121,8 @@ export default function FamilyTreeTab() {
               <User className="w-5 h-5 text-accent" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-medium text-foreground">{c.connected_name}</p>
-              <p className="text-xs text-muted-foreground">Connected family member</p>
+              <p className="font-medium text-foreground">{c.nickname || c.connected_name}</p>
+              <p className="text-xs text-muted-foreground">{c.connected_name} · Connected family member</p>
             </div>
             <Button
               variant="ghost"
