@@ -289,6 +289,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           full_name: string | null
+          gender: string | null
           id: string
           safeword: string | null
           updated_at: string
@@ -300,6 +301,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           full_name?: string | null
+          gender?: string | null
           id?: string
           safeword?: string | null
           updated_at?: string
@@ -311,6 +313,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           full_name?: string | null
+          gender?: string | null
           id?: string
           safeword?: string | null
           updated_at?: string
