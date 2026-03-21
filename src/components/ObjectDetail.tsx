@@ -81,6 +81,24 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
     },
   });
 
+  // Fetch related community objects by name similarity
+  const { data: communityObjects } = useQuery({
+    queryKey: ['related-community-objects', object?.name],
+    queryFn: async () => {
+      if (!object?.name) return [];
+      // Get all community objects, we'll match by name keywords
+      const { data, error } = await supabase
+        .from('objects')
+        .select('id, name, image_url, description')
+        .neq('id', objectId)
+        .not('image_url', 'is', null)
+        .limit(100);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!object?.name,
+  });
+
   // Auto-generate evolution timeline when object loads
   useEffect(() => {
     if (object?.name && !evolution && !loadingEvolution) {
@@ -95,6 +113,22 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
         .finally(() => setLoadingEvolution(false));
     }
   }, [object?.name]);
+
+  // Match community images to timeline entries based on keyword similarity
+  const enrichedEvolution = evolution?.map((entry) => {
+    if (!communityObjects || communityObjects.length === 0) return entry;
+    const entryWords = (entry.name + ' ' + entry.description).toLowerCase().split(/\s+/);
+    const objectNameWords = (object?.name || '').toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
+    
+    const matches = communityObjects.filter((co) => {
+      const coName = co.name.toLowerCase();
+      // Match if the community object name shares keywords with the timeline entry or the main object
+      return objectNameWords.some((w: string) => coName.includes(w)) ||
+             entryWords.some((w) => w.length > 3 && coName.includes(w));
+    });
+    
+    return { ...entry, relatedImages: matches.length > 0 ? matches.slice(0, 3) : undefined };
+  });
 
   const playNarration = async () => {
     if (isPlaying && audioRef.current) {
