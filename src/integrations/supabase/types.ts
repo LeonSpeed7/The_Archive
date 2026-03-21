@@ -36,18 +36,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          nickname: string
           requester_id: string
           target_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          nickname?: string
           requester_id: string
           target_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          nickname?: string
           requester_id?: string
           target_id?: string
         }
@@ -338,7 +341,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      connect_by_safeword: { Args: { p_safeword: string }; Returns: string }
+      connect_by_safeword:
+        | { Args: { p_safeword: string }; Returns: string }
+        | { Args: { p_nickname?: string; p_safeword: string }; Returns: string }
       search_connected_personal_objects: {
         Args: { p_search?: string }
         Returns: {
