@@ -1,13 +1,16 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Camera, Upload, Sparkles, Loader2, X, Globe, BookLock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import ObjectDetail from '@/components/ObjectDetail';
+
+const MAX_AI_USES = 10;
 
 export default function ARCameraTab() {
   const { user } = useAuth();
@@ -24,15 +27,35 @@ export default function ARCameraTab() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Track AI usage
+  const { data: usageCount = 0 } = useQuery({
+    queryKey: ['ai-usage', user?.id],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('ai_usage')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user!.id);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!user,
+  });
+
+  const remainingUses = MAX_AI_USES - usageCount;
+
+  // Fix: attach stream to video element whenever stream or ref changes
+  useEffect(() => {
+    if (videoRef.current && cameraStream) {
+      videoRef.current.srcObject = cameraStream;
+    }
+  }, [cameraStream]);
+
   const startCamera = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
       });
       setCameraStream(stream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
     } catch {
       toast.error('Could not access camera. Please check permissions.');
     }
@@ -68,9 +91,16 @@ export default function ARCameraTab() {
       toast.error('Please capture or upload a photo first.');
       return;
     }
+    if (remainingUses <= 0) {
+      toast.error('You have reached the maximum of 10 AI identifications.');
+      return;
+    }
     setIsIdentifying(true);
     setAiResult(null);
     try {
+      // Record usage first
+      await supabase.from('ai_usage').insert({ user_id: user!.id });
+
       const { data, error } = await supabase.functions.invoke('identify-object', {
         body: { imageBase64: capturedImage, userHint: objectName || undefined },
       });
@@ -78,6 +108,7 @@ export default function ARCameraTab() {
       if (data.error) throw new Error(data.error);
       setAiResult(data);
       if (data.name) setObjectName(data.name);
+      queryClient.invalidateQueries({ queryKey: ['ai-usage'] });
       toast.success('Object identified!');
     } catch (err: any) {
       toast.error(err.message || 'Failed to identify object');
@@ -138,9 +169,24 @@ export default function ARCameraTab() {
     <div className="max-w-2xl mx-auto space-y-8">
       <canvas ref={canvasRef} className="hidden" />
 
+      {/* Header with usage counter */}
       <div className="animate-reveal-up">
-        <h2 className="font-display text-2xl font-semibold text-foreground">AR Camera</h2>
-        <p className="text-muted-foreground mt-1">Capture or upload an object — AI will identify it</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="font-display text-2xl font-semibold text-foreground">AR Camera</h2>
+            <p className="text-muted-foreground mt-1">Capture or upload an object — AI will identify it</p>
+          </div>
+          <div className="flex-shrink-0 text-right">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium tabular-nums text-foreground">
+                {remainingUses}/{MAX_AI_USES}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">AI scans left</p>
+            <Progress value={(usageCount / MAX_AI_USES) * 100} className="h-1.5 w-24 mt-1.5" />
+          </div>
+        </div>
       </div>
 
       {/* Camera / Upload Selector */}
@@ -174,8 +220,14 @@ export default function ARCameraTab() {
       {/* Live Camera View */}
       {cameraStream && !capturedImage && (
         <div className="animate-reveal-up stagger-1 space-y-3">
-          <div className="relative rounded-xl overflow-hidden border border-border">
-            <video ref={videoRef} autoPlay playsInline muted className="w-full aspect-video object-cover" />
+          <div className="relative rounded-xl overflow-hidden border border-border bg-black">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full aspect-video object-cover"
+            />
           </div>
           <div className="flex gap-2">
             <Button onClick={captureFromCamera} className="flex-1">
@@ -230,14 +282,21 @@ export default function ARCameraTab() {
 
           {/* Identify Button */}
           {!aiResult && (
-            <Button onClick={identifyObject} disabled={isIdentifying} className="w-full" size="lg">
+            <Button
+              onClick={identifyObject}
+              disabled={isIdentifying || remainingUses <= 0}
+              className="w-full"
+              size="lg"
+            >
               {isIdentifying ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Identifying...
                 </>
+              ) : remainingUses <= 0 ? (
+                'No AI scans remaining'
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4 mr-1.5" /> Identify with AI
+                  <Sparkles className="w-4 h-4 mr-1.5" /> Identify with AI ({remainingUses} left)
                 </>
               )}
             </Button>
