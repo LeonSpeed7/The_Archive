@@ -55,13 +55,23 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
     queryKey: ['stories', objectId, source],
     queryFn: async () => {
       const col = isPersonal ? 'personal_object_id' : 'object_id';
-      const { data, error } = await supabase
+      const { data: storyRows, error } = await supabase
         .from('stories')
-        .select('*, profiles:user_id(display_name, full_name, username)')
+        .select('*')
         .eq(col, objectId)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return data;
+      if (!storyRows || storyRows.length === 0) return [];
+
+      // Batch-fetch author profiles
+      const userIds = [...new Set(storyRows.map((s) => s.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, full_name, username')
+        .in('user_id', userIds);
+
+      const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
+      return storyRows.map((s) => ({ ...s, profiles: profileMap.get(s.user_id) || null }));
     },
   });
 
