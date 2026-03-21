@@ -295,7 +295,7 @@ function InteractiveTree({ members, myName, myUsername, myGender, objectCounts }
                     rx={6}
                   />
                   <text x={14} y={y - 28} fill="hsl(var(--muted-foreground))" fontSize="10" fontWeight="600"
-                    fontFamily="var(--font-display)" textTransform="uppercase" letterSpacing="1.5" opacity="0.6"
+                    fontFamily="var(--font-display)" letterSpacing="1.5" opacity="0.6" style={{ textTransform: 'uppercase' }}
                   >
                     {GENERATION_LABELS[gen] || `Gen ${gen}`}
                     {isCollapsed ? ' (collapsed)' : ''}
