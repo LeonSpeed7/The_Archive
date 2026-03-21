@@ -65,24 +65,36 @@ export default function FamilyTreeTab() {
         <div className="animate-reveal-up bg-card border border-border rounded-xl p-6 space-y-4">
           <h3 className="font-display text-lg font-semibold text-foreground">Add a Family Member</h3>
           <p className="text-sm text-muted-foreground">
-            Enter their safeword to connect. Once connected, you'll both see each other's archived objects in search results.
+            Enter their name and safeword to connect. Once connected, you'll both see each other's archived objects in search results.
           </p>
-          <div className="flex gap-2">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Name *</label>
+            <Input
+              value={memberName}
+              onChange={(e) => setMemberName(e.target.value)}
+              placeholder="e.g. Grandma Rose, Uncle James…"
+              className="bg-background"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">Their safeword *</label>
             <Input
               value={safeword}
               onChange={(e) => setSafeword(e.target.value)}
               placeholder="Enter their safeword…"
               className="bg-background"
-              onKeyDown={(e) => e.key === 'Enter' && safeword.trim() && connect.mutate()}
+              onKeyDown={(e) => e.key === 'Enter' && safeword.trim() && memberName.trim() && connect.mutate()}
             />
+          </div>
+          <div className="flex gap-2">
             <Button
               onClick={() => connect.mutate()}
-              disabled={!safeword.trim() || connect.isPending}
+              disabled={!safeword.trim() || !memberName.trim() || connect.isPending}
             >
               {connect.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Connect'}
             </Button>
+            <Button variant="ghost" onClick={() => setShowAddForm(false)}>Cancel</Button>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => setShowAddForm(false)}>Cancel</Button>
         </div>
       )}
 
