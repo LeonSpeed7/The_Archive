@@ -26,9 +26,12 @@ export default function Dashboard() {
       {/* Header */}
       <header className="border-b sticky top-0 z-50" style={{ backgroundColor: 'hsl(var(--teal-900))', borderColor: 'hsl(var(--teal-700) / 0.5)' }}>
         <div className="container flex items-center justify-between h-14">
-          <h1 className="font-display text-xl font-semibold tracking-tight text-white">
+          <button
+            onClick={() => setActiveTab('database')}
+            className="font-display text-xl font-semibold tracking-tight text-white hover:opacity-80 transition-opacity cursor-pointer"
+          >
             The Archive
-          </h1>
+          </button>
           <ProfileMenu />
         </div>
       </header>
