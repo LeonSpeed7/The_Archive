@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Clock, Users, Volume2, Loader2, VolumeX, Globe, Lock, Sparkles, Calendar, ChevronLeft, ChevronRight, Pencil, X, Check, UserCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, Clock, Users, Volume2, Loader2, VolumeX, Globe, Lock, Sparkles, Calendar, ChevronLeft, ChevronRight, Pencil, X, Check, UserCircle, Trash2, Pause, Play, Square } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
@@ -34,6 +35,7 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const evoScrollRef = useRef<HTMLDivElement>(null);
@@ -130,47 +132,52 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
     return { ...entry, relatedImages: matches.length > 0 ? matches.slice(0, 3) : undefined };
   });
 
-  const playNarration = async () => {
-    // Stop if already playing
-    if (isPlaying) {
-      window.speechSynthesis.cancel();
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-      setIsPlaying(false);
-      return;
-    }
-
+  const startNarration = () => {
     const parts = [object?.name, object?.description, object?.history].filter(Boolean);
     if (parts.length === 0) {
       toast.error('No content available to narrate');
       return;
     }
 
-    const narrationText = parts.join('. ');
-
-    // Use browser Web Speech API — no API key needed
-    if ('speechSynthesis' in window) {
-      setIsLoadingAudio(true);
-      try {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(narrationText);
-        utterance.rate = 0.95;
-        utterance.pitch = 1;
-        utterance.onend = () => setIsPlaying(false);
-        utterance.onerror = () => { setIsPlaying(false); toast.error('Speech synthesis failed'); };
-        window.speechSynthesis.speak(utterance);
-        setIsPlaying(true);
-      } catch (err: any) {
-        toast.error('Failed to play narration');
-        console.error(err);
-      } finally {
-        setIsLoadingAudio(false);
-      }
-    } else {
+    if (!('speechSynthesis' in window)) {
       toast.error('Your browser does not support text-to-speech');
+      return;
     }
+
+    setIsLoadingAudio(true);
+    try {
+      window.speechSynthesis.cancel();
+      const narrationText = parts.join('. ');
+      const utterance = new SpeechSynthesisUtterance(narrationText);
+      utterance.rate = 0.95;
+      utterance.pitch = 1;
+      utterance.onend = () => { setIsPlaying(false); setIsPaused(false); };
+      utterance.onerror = () => { setIsPlaying(false); setIsPaused(false); toast.error('Speech synthesis failed'); };
+      window.speechSynthesis.speak(utterance);
+      setIsPlaying(true);
+      setIsPaused(false);
+    } catch (err: any) {
+      toast.error('Failed to play narration');
+      console.error(err);
+    } finally {
+      setIsLoadingAudio(false);
+    }
+  };
+
+  const pauseNarration = () => {
+    window.speechSynthesis.pause();
+    setIsPaused(true);
+  };
+
+  const resumeNarration = () => {
+    window.speechSynthesis.resume();
+    setIsPaused(false);
+  };
+
+  const stopNarration = () => {
+    window.speechSynthesis.cancel();
+    setIsPlaying(false);
+    setIsPaused(false);
   };
 
   const scrollEvo = (dir: 'left' | 'right') => {
@@ -270,10 +277,38 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
               onDeleted={onBack}
             />
           )}
-          <Button variant="outline" size="sm" onClick={playNarration} disabled={isLoadingAudio} className="gap-1.5">
-            {isLoadingAudio ? <Loader2 className="w-4 h-4 animate-spin" /> : isPlaying ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            {isLoadingAudio ? 'Loading…' : isPlaying ? 'Stop' : 'Listen'}
-          </Button>
+          {!isPlaying ? (
+            <Button variant="outline" size="sm" onClick={startNarration} disabled={isLoadingAudio} className="gap-1.5">
+              {isLoadingAudio ? <Loader2 className="w-4 h-4 animate-spin" /> : <Volume2 className="w-4 h-4" />}
+              {isLoadingAudio ? 'Loading…' : 'Listen'}
+            </Button>
+          ) : (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5" style={{ borderColor: 'hsl(var(--teal-500))', color: 'hsl(var(--teal-700))' }}>
+                  {isPaused ? <Pause className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                  {isPaused ? 'Paused' : 'Playing…'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-36 p-1" sideOffset={4}>
+                {isPaused ? (
+                  <button onClick={resumeNarration}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-secondary transition-colors active:scale-[0.97]">
+                    <Play className="w-3.5 h-3.5" /> Resume
+                  </button>
+                ) : (
+                  <button onClick={pauseNarration}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-secondary transition-colors active:scale-[0.97]">
+                    <Pause className="w-3.5 h-3.5" /> Pause
+                  </button>
+                )}
+                <button onClick={stopNarration}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors active:scale-[0.97]">
+                  <Square className="w-3.5 h-3.5" /> Stop
+                </button>
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
       </div>
 
