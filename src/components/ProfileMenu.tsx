@@ -196,7 +196,6 @@ function SettingsPanel({ profile, userId, onBack }: { profile: any; userId: stri
       const { error } = await supabase.from('profiles')
         .update({ full_name: trimmedName, username: trimmedUser, display_name: trimmedName, gender } as any)
         .eq('user_id', userId);
-        .eq('user_id', userId);
       if (error) {
         if (error.message.includes('duplicate') || error.message.includes('unique')) throw new Error('Username taken');
         throw error;
