@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ScanEye, Play, Square, Loader2, AlertCircle, History, BookOpen } from 'lucide-react';
+import FocusModeOverlay from './FocusModeOverlay';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -36,6 +37,7 @@ export default function LiveSenseTab() {
   const [isActive, setIsActive] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [detectedItems, setDetectedItems] = useState<DetectedItem[]>([]);
+  const [focusedItem, setFocusedItem] = useState<DetectedItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
 
@@ -278,13 +280,16 @@ export default function LiveSenseTab() {
             <video ref={videoRef} autoPlay playsInline muted className="w-full aspect-video object-cover" />
 
             {/* Bounding box overlays */}
-            <div ref={overlayRef} className="absolute inset-0 pointer-events-none">
+            <div ref={overlayRef} className="absolute inset-0">
               {detectedItems.map((item, i) => {
                 const [xMin, yMin, xMax, yMax] = item.bbox;
+                const isFocused = focusedItem?.name === item.name;
+                const hasFocus = focusedItem !== null;
                 return (
-                  <div
+                  <button
                     key={`${item.name}-${i}`}
-                    className="absolute transition-all duration-500 ease-out"
+                    onClick={() => setFocusedItem(item)}
+                    className="absolute transition-all duration-500 ease-out cursor-pointer"
                     style={{
                       left: `${xMin * 100}%`,
                       top: `${yMin * 100}%`,
@@ -292,10 +297,12 @@ export default function LiveSenseTab() {
                       height: `${(yMax - yMin) * 100}%`,
                       border: `2px solid ${confidenceColor[item.confidence] || confidenceColor.medium}`,
                       borderRadius: '8px',
+                      opacity: hasFocus && !isFocused ? 0.2 : 1,
+                      boxShadow: isFocused ? `0 0 20px ${confidenceColor[item.confidence]}` : 'none',
                     }}
                   >
                     <span
-                      className="absolute -top-6 left-0 px-2 py-0.5 rounded-md text-[11px] font-bold whitespace-nowrap"
+                      className="absolute -top-6 left-0 px-2 py-0.5 rounded-md text-[11px] font-bold whitespace-nowrap pointer-events-none"
                       style={{
                         backgroundColor: confidenceColor[item.confidence] || confidenceColor.medium,
                         color: 'white',
@@ -303,7 +310,7 @@ export default function LiveSenseTab() {
                     >
                       {item.name}
                     </span>
-                  </div>
+                  </button>
                 );
               })}
 
@@ -401,6 +408,11 @@ export default function LiveSenseTab() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Focus Mode Overlay */}
+      {focusedItem && (
+        <FocusModeOverlay item={focusedItem} onClose={() => setFocusedItem(null)} />
       )}
     </div>
   );
