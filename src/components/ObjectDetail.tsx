@@ -199,6 +199,49 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
     enabled: !!user,
   });
 
+  // Editing state
+  const isOwner = (isPersonal && (object as any).user_id === user?.id) || (!isPersonal && (object as any).created_by === user?.id);
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editOrigin, setEditOrigin] = useState('');
+  const [editHistory, setEditHistory] = useState('');
+
+  const startEditing = () => {
+    setEditName(object.name || '');
+    setEditDesc(object.description || '');
+    setEditOrigin((object as any).estimated_origin || '');
+    setEditHistory(object.history || '');
+    setEditing(true);
+  };
+
+  const saveEdit = useMutation({
+    mutationFn: async () => {
+      const trimmedName = editName.trim();
+      if (!trimmedName) throw new Error('Name is required');
+      const table = isPersonal ? 'personal_objects' : 'objects';
+      const updates: any = {
+        name: trimmedName,
+        description: editDesc.trim() || null,
+        estimated_origin: editOrigin.trim() || null,
+        history: editHistory.trim() || null,
+      };
+      const { error } = await supabase.from(table).update(updates).eq('id', objectId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Object updated!');
+      setEditing(false);
+      setEvolution(null); // reset timeline so it regenerates
+      queryClient.invalidateQueries({ queryKey: [isPersonal ? 'personal-object' : 'object', objectId] });
+      queryClient.invalidateQueries({ queryKey: ['objects-search'] });
+      queryClient.invalidateQueries({ queryKey: ['global-objects'] });
+      queryClient.invalidateQueries({ queryKey: ['all-objects'] });
+      queryClient.invalidateQueries({ queryKey: ['personal-objects'] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
   if (!object) return <div className="text-center text-muted-foreground py-12">Loading...</div>;
 
   const estimatedOrigin = (object as any).estimated_origin;
@@ -222,8 +265,12 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
         <div className="flex items-center gap-2">
-          {/* Delete button - only for own objects */}
-          {((isPersonal && (object as any).user_id === user?.id) || (!isPersonal && (object as any).created_by === user?.id)) && (
+          {isOwner && !editing && (
+            <Button variant="outline" size="sm" onClick={startEditing} className="gap-1.5">
+              <Pencil className="w-3.5 h-3.5" /> Edit
+            </Button>
+          )}
+          {isOwner && (
             <DeleteObjectButton
               objectId={objectId}
               table={isPersonal ? 'personal_objects' : 'objects'}
@@ -237,27 +284,81 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
         </div>
       </div>
 
-      {/* Object info */}
-      <div className="animate-reveal-up">
-        {object.image_url && (
-          <img src={object.image_url} alt={object.name} className="w-full aspect-video object-cover rounded-xl mb-6" />
-        )}
-        <h2 className="font-display text-3xl font-bold text-foreground leading-tight">{object.name}</h2>
-        {estimatedOrigin && (
-          <p className="text-sm text-primary font-mono font-semibold mt-2">Origin: {estimatedOrigin}</p>
-        )}
-        {object.description && <p className="text-muted-foreground mt-3 text-lg">{object.description}</p>}
-      </div>
-
-      {/* History */}
-      {object.history && (
-        <div className="animate-reveal-up stagger-1 bg-card border border-border rounded-xl p-6">
-          <div className="flex items-center gap-2 mb-3">
-            <Clock className="w-4 h-4 text-primary" />
-            <h3 className="font-display text-lg font-semibold text-foreground">History</h3>
+      {/* Object info — editable or read-only */}
+      {editing ? (
+        <div className="animate-fade-in rounded-xl border border-border bg-card p-6 space-y-4">
+          <h3 className="font-display text-lg font-semibold text-foreground flex items-center gap-2">
+            <Pencil className="w-4 h-4 text-primary" /> Edit Object
+          </h3>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Name *</label>
+            <input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="w-full h-9 px-3 text-sm rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
           </div>
-          <p className="text-foreground/80 leading-relaxed whitespace-pre-line">{object.history}</p>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Description</label>
+            <Textarea
+              value={editDesc}
+              onChange={(e) => setEditDesc(e.target.value)}
+              placeholder="Describe this object…"
+              rows={3}
+              className="resize-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Estimated Origin</label>
+            <input
+              value={editOrigin}
+              onChange={(e) => setEditOrigin(e.target.value)}
+              placeholder="e.g. 1920s Japan"
+              className="w-full h-9 px-3 text-sm rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">History</label>
+            <Textarea
+              value={editHistory}
+              onChange={(e) => setEditHistory(e.target.value)}
+              placeholder="Tell the history of this object…"
+              rows={5}
+              className="resize-none"
+            />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button size="sm" onClick={() => saveEdit.mutate()} disabled={saveEdit.isPending || !editName.trim()} className="gap-1.5">
+              {saveEdit.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+              {saveEdit.isPending ? 'Saving…' : 'Save'}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setEditing(false)} className="gap-1.5">
+              <X className="w-3.5 h-3.5" /> Cancel
+            </Button>
+          </div>
         </div>
+      ) : (
+        <>
+          <div className="animate-reveal-up">
+            {object.image_url && (
+              <img src={object.image_url} alt={object.name} className="w-full aspect-video object-cover rounded-xl mb-6" />
+            )}
+            <h2 className="font-display text-3xl font-bold text-foreground leading-tight">{object.name}</h2>
+            {estimatedOrigin && (
+              <p className="text-sm text-primary font-mono font-semibold mt-2">Origin: {estimatedOrigin}</p>
+            )}
+            {object.description && <p className="text-muted-foreground mt-3 text-lg">{object.description}</p>}
+          </div>
+
+          {/* History */}
+          {object.history && (
+            <div className="animate-reveal-up stagger-1 bg-card border border-border rounded-xl p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Clock className="w-4 h-4 text-primary" />
+                <h3 className="font-display text-lg font-semibold text-foreground">History</h3>
+              </div>
+              <p className="text-foreground/80 leading-relaxed whitespace-pre-line">{object.history}</p>
+            </div>
       )}
 
       {/* Evolution Timeline */}
