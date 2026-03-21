@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS guided_exploration boolean NOT NULL DEFAULT true;
