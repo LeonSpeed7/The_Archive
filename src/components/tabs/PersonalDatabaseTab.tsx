@@ -237,7 +237,7 @@ function VisibilityColumn({
             className="group rounded-xl border border-border bg-background p-3 hover:shadow-md hover:shadow-foreground/5 transition-all duration-300"
           >
             <button
-              onClick={() => onSelect(obj.id)}
+              onClick={() => onSelect(obj.id, obj)}
               className="w-full text-left active:scale-[0.98] transition-transform"
             >
               <div className="flex gap-3 items-start">
