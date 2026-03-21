@@ -269,13 +269,41 @@ export default function ARCameraTab() {
             </div>
           )}
 
-          <div className="flex gap-2 pt-2">
-            <Button onClick={() => saveToDatabase.mutate()} disabled={saveToDatabase.isPending} className="flex-1">
-              {saveToDatabase.isPending ? 'Saving...' : 'Save to Global Archive'}
-            </Button>
-            <Button variant="outline" onClick={resetAll}>
-              Start Over
-            </Button>
+          {/* Archive Target Selector */}
+          <div className="pt-2 space-y-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Save to</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setArchiveTarget('global')}
+                className={`flex items-center gap-2 px-4 py-3 rounded-lg border text-sm font-medium transition-all duration-200 active:scale-[0.97] ${
+                  archiveTarget === 'global'
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border bg-background text-muted-foreground hover:border-primary/40'
+                }`}
+              >
+                <Globe className="w-4 h-4" />
+                Global Archive
+              </button>
+              <button
+                onClick={() => setArchiveTarget('personal')}
+                className={`flex items-center gap-2 px-4 py-3 rounded-lg border text-sm font-medium transition-all duration-200 active:scale-[0.97] ${
+                  archiveTarget === 'personal'
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border bg-background text-muted-foreground hover:border-primary/40'
+                }`}
+              >
+                <BookLock className="w-4 h-4" />
+                My Archive
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={() => saveToDatabase.mutate()} disabled={saveToDatabase.isPending} className="flex-1">
+                {saveToDatabase.isPending ? 'Saving...' : `Save to ${archiveTarget === 'global' ? 'Global' : 'Personal'} Archive`}
+              </Button>
+              <Button variant="outline" onClick={resetAll}>
+                Start Over
+              </Button>
+            </div>
           </div>
         </div>
       )}
