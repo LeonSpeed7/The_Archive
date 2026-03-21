@@ -37,6 +37,7 @@ export type Database = {
           created_at: string
           id: string
           nickname: string
+          relationship: string
           requester_id: string
           target_id: string
         }
@@ -44,6 +45,7 @@ export type Database = {
           created_at?: string
           id?: string
           nickname?: string
+          relationship?: string
           requester_id: string
           target_id: string
         }
@@ -51,6 +53,7 @@ export type Database = {
           created_at?: string
           id?: string
           nickname?: string
+          relationship?: string
           requester_id?: string
           target_id?: string
         }
@@ -370,10 +373,16 @@ export type Database = {
         Args: { story_user_id: string; story_visibility: string }
         Returns: boolean
       }
-      connect_by_safeword: {
-        Args: { p_safeword: string; p_username?: string }
-        Returns: string
-      }
+      connect_by_safeword:
+        | { Args: { p_safeword: string; p_username?: string }; Returns: string }
+        | {
+            Args: {
+              p_relationship?: string
+              p_safeword: string
+              p_username?: string
+            }
+            Returns: string
+          }
       search_connected_personal_objects: {
         Args: { p_search?: string }
         Returns: {
