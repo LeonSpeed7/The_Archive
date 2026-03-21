@@ -18,6 +18,7 @@ export default function ARCameraTab() {
   const [aiResult, setAiResult] = useState<{ name: string; description: string; history: string } | null>(null);
   const [isIdentifying, setIsIdentifying] = useState(false);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<'global' | 'personal'>('global');
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
