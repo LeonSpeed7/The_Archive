@@ -212,8 +212,20 @@ export default function GlobalDatabaseTab() {
       </div>
 
       <div className="relative z-10 max-w-2xl mx-auto animate-reveal-up stagger-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search the archive..." className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-white/30" />
+        <div className="relative">
+          {isAiSearching ? (
+            <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/70 animate-spin" />
+          ) : (
+            <Wand2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
+          )}
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="AI-powered search — try 'things from ancient civilizations'..." className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-white/30" />
+        </div>
+        {search.trim() && !isAiSearching && aiSearchIds !== null && (
+          <p className="text-xs text-white/50 mt-1.5 flex items-center gap-1">
+            <Sparkles className="w-3 h-3" />
+            AI found {aiSearchIds.length} result{aiSearchIds.length !== 1 ? 's' : ''} for "{search}"
+          </p>
+        )}
       </div>
 
       {/* Timeline */}
