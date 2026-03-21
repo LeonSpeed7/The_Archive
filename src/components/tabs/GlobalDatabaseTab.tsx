@@ -1,11 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Archive, Users, ArrowLeft, Sparkles, Loader2, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
+import { Search, Archive, Users, ArrowLeft, Sparkles, Loader2, ChevronLeft, ChevronRight, Lock, Wand2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import ObjectDetail from '@/components/ObjectDetail';
+import { toast } from 'sonner';
 
 interface TimelineEntry {
   year: string;
@@ -22,37 +23,67 @@ const TIMELINE_COLORS = [
   { bg: 'hsl(var(--teal-400))', light: 'hsl(var(--teal-100))' },
   { bg: 'hsl(var(--teal-cta))', light: 'hsl(var(--teal-50))' },
   { bg: 'hsl(var(--teal-600))', light: 'hsl(var(--teal-100))' },
-  { bg: 'hsl(var(--color-highlight))', light: 'hsl(48 87% 93%)' },
-  { bg: 'hsl(var(--color-success))', light: 'hsl(145 50% 93%)' },
+  { bg: 'hsl(48 87% 55%)', light: 'hsl(48 87% 93%)' },
+  { bg: 'hsl(145 50% 45%)', light: 'hsl(145 50% 93%)' },
   { bg: 'hsl(var(--teal-700))', light: 'hsl(var(--teal-100))' },
 ];
 
 export default function GlobalDatabaseTab() {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
+  const [aiSearchIds, setAiSearchIds] = useState<string[] | null>(null);
+  const [isAiSearching, setIsAiSearching] = useState(false);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [selectedSource, setSelectedSource] = useState<'global' | 'personal'>('global');
   const [evolutionView, setEvolutionView] = useState<EvolutionTimeline | null>(null);
   const [generatingFor, setGeneratingFor] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // AI search with debounce
+  useEffect(() => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+
+    if (!search.trim()) {
+      setAiSearchIds(null);
+      setIsAiSearching(false);
+      return;
+    }
+
+    setIsAiSearching(true);
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('ai-search', {
+          body: { query: search.trim() },
+        });
+        if (error) throw error;
+        if (data.error) throw new Error(data.error);
+        setAiSearchIds(data.ids || []);
+      } catch (err: any) {
+        console.error('AI search error:', err);
+        toast.error('AI search failed, falling back to text search');
+        setAiSearchIds(null);
+      } finally {
+        setIsAiSearching(false);
+      }
+    }, 600);
+
+    return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
+  }, [search]);
 
   const { data: objects, isLoading } = useQuery({
-    queryKey: ['all-objects', search],
+    queryKey: ['all-objects'],
     queryFn: async () => {
-      let query = supabase.from('objects').select('*').order('created_at', { ascending: true });
-      if (search.trim()) query = query.ilike('name', `%${search}%`);
-      const { data, error } = await query.limit(100);
+      const { data, error } = await supabase.from('objects').select('*').order('created_at', { ascending: true }).limit(200);
       if (error) throw error;
       return data;
     },
   });
 
   const { data: myPersonalObjects } = useQuery({
-    queryKey: ['my-personal-objects-community', search, user?.id],
+    queryKey: ['my-personal-objects-community', user?.id],
     queryFn: async () => {
-      let query = supabase.from('personal_objects').select('*').eq('user_id', user!.id).order('created_at', { ascending: false });
-      if (search.trim()) query = query.ilike('name', `%${search}%`);
-      const { data, error } = await query.limit(50);
+      const { data, error } = await supabase.from('personal_objects').select('*').eq('user_id', user!.id).order('created_at', { ascending: false }).limit(50);
       if (error) throw error;
       return data;
     },
@@ -60,9 +91,9 @@ export default function GlobalDatabaseTab() {
   });
 
   const { data: connectedObjects } = useQuery({
-    queryKey: ['connected-objects', search, user?.id],
+    queryKey: ['connected-objects', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('search_connected_personal_objects', { p_search: search.trim() });
+      const { data, error } = await supabase.rpc('search_connected_personal_objects', { p_search: '' });
       if (error) throw error;
       return data as any[];
     },
@@ -149,7 +180,15 @@ export default function GlobalDatabaseTab() {
     ...(objects?.map(o => ({ ...o, _source: 'global' as const })) ?? []),
     ...(myPersonalObjects?.map(o => ({ ...o, _source: 'mine' as const })) ?? []),
     ...(connectedObjects?.map(o => ({ ...o, _source: 'connected' as const })) ?? []),
-  ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  ]
+    .filter(obj => {
+      // If AI search returned results, filter by matched IDs
+      if (aiSearchIds !== null && search.trim()) {
+        return aiSearchIds.includes(obj.id);
+      }
+      return true;
+    })
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   const uniqueNames = [...new Set(objects?.map(o => o.name) ?? [])];
 
@@ -173,8 +212,20 @@ export default function GlobalDatabaseTab() {
       </div>
 
       <div className="relative z-10 max-w-2xl mx-auto animate-reveal-up stagger-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search the archive..." className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-white/30" />
+        <div className="relative">
+          {isAiSearching ? (
+            <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/70 animate-spin" />
+          ) : (
+            <Wand2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
+          )}
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="AI-powered search — try 'things from ancient civilizations'..." className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-white/30" />
+        </div>
+        {search.trim() && !isAiSearching && aiSearchIds !== null && (
+          <p className="text-xs text-white/50 mt-1.5 flex items-center gap-1">
+            <Sparkles className="w-3 h-3" />
+            AI found {aiSearchIds.length} result{aiSearchIds.length !== 1 ? 's' : ''} for "{search}"
+          </p>
+        )}
       </div>
 
       {/* Timeline */}
