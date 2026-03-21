@@ -152,6 +152,7 @@ export default function GlobalDatabaseTab() {
   // Main archive
   const allTimelineObjects = [
     ...(objects?.map(o => ({ ...o, _source: 'global' as const })) ?? []),
+    ...(myPersonalObjects?.map(o => ({ ...o, _source: 'mine' as const })) ?? []),
     ...(connectedObjects?.map(o => ({ ...o, _source: 'connected' as const })) ?? []),
   ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
