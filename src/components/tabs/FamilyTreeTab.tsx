@@ -270,8 +270,14 @@ function NodeShape({ x, y, node }: { x: number; y: number; node: TNode }) {
         </text>
       )}
 
-      {/* Username below shape */}
-      {node.username && (
+      {/* Username — above shape for "You", below for others */}
+      {node.username && isYou && (
+        <text x={x} y={y - getNodeBounds(node).halfH - 8} textAnchor="middle"
+          fill="hsl(var(--muted-foreground))" fontSize="8.5" fontWeight="600" fontFamily="var(--font-body)">
+          @{node.username}
+        </text>
+      )}
+      {node.username && !isYou && (
         <text x={x} y={y + getNodeBounds(node).halfH + 13} textAnchor="middle"
           fill="hsl(var(--muted-foreground))" fontSize="8" fontFamily="var(--font-body)">
           @{node.username}
@@ -518,11 +524,6 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
             title="Zoom out">
             <ZoomOut className="w-4 h-4" />
           </button>
-          <button onClick={handleFit}
-            className="flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-200 active:scale-95"
-            style={{ backgroundColor: 'hsl(var(--background) / 0.9)', borderColor: 'hsl(var(--teal-200))', color: 'hsl(var(--teal-700))', backdropFilter: 'blur(4px)' }}
-            title="Fit to view">
-            <Maximize2 className="w-4 h-4" />
           </button>
         </div>
       </div>
