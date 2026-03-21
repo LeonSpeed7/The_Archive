@@ -204,6 +204,7 @@ function SettingsPanel({ profile, userId, onBack }: { profile: any; userId: stri
   const [fullName, setFullName] = useState(profile.full_name || '');
   const [username, setUsername] = useState(profile.username || '');
   const [gender, setGender] = useState((profile as any).gender || 'prefer_not_to_say');
+  const [bio, setBio] = useState((profile as any).bio || '');
   const [uploading, setUploading] = useState(false);
 
   const uploadAvatar = async (file: File) => {
@@ -249,7 +250,7 @@ function SettingsPanel({ profile, userId, onBack }: { profile: any; userId: stri
       if (!trimmedUser) throw new Error('Username is required');
       if (!/^[a-z0-9_]{3,30}$/.test(trimmedUser)) throw new Error('Username: 3–30 chars (letters, numbers, _)');
       const { error } = await supabase.from('profiles')
-        .update({ full_name: trimmedName, username: trimmedUser, display_name: trimmedName, gender } as any)
+        .update({ full_name: trimmedName, username: trimmedUser, display_name: trimmedName, gender, bio: bio.trim() || null } as any)
         .eq('user_id', userId);
       if (error) {
         if (error.message.includes('duplicate') || error.message.includes('unique')) throw new Error('Username taken');
@@ -341,6 +342,18 @@ function SettingsPanel({ profile, userId, onBack }: { profile: any; userId: stri
               <option value="other">Other</option>
               <option value="prefer_not_to_say">Prefer not to say</option>
             </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Bio</label>
+            <textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="A short bio about yourself…"
+              maxLength={200}
+              rows={3}
+              className="w-full px-2.5 py-2 text-sm rounded-md border border-border bg-background text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <p className="text-[10px] text-muted-foreground mt-0.5 text-right">{bio.length}/200</p>
           </div>
           <Button size="sm" onClick={() => saveProfile.mutate()} disabled={saveProfile.isPending} className="w-full text-xs">
             {saveProfile.isPending ? 'Saving…' : 'Save Changes'}
