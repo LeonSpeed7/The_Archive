@@ -11,7 +11,7 @@ import GuidedExploration from '@/components/GuidedExploration';
 type Tab = 'camera' | 'livesense' | 'personal' | 'database' | 'tree';
 
 const tabs: { id: Tab; label: string; icon: typeof Camera }[] = [
-  { id: 'camera', label: 'AI Camera', icon: Camera },
+  { id: 'camera', label: 'AI Archiving', icon: Camera },
   { id: 'livesense', label: 'Live Sense', icon: ScanEye },
   { id: 'personal', label: 'My Archive', icon: BookLock },
   { id: 'database', label: 'Community Database', icon: Globe },
