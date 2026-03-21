@@ -7,6 +7,17 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
+const INVERSE_RELATIONSHIPS: Record<string, string> = {
+  parent: 'child', child: 'parent',
+  grandparent: 'grandchild', grandchild: 'grandparent',
+  uncle_aunt: 'nephew_niece', nephew_niece: 'uncle_aunt',
+  sibling: 'sibling', spouse: 'spouse', cousin: 'cousin',
+  other: 'other',
+};
+function invertRelationship(rel: string): string {
+  return INVERSE_RELATIONSHIPS[rel] || rel;
+}
+
 export function useConnections() {
   const { user } = useAuth();
   return useQuery({
