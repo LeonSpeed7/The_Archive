@@ -199,10 +199,10 @@ export default function GuidedExploration({ activeTab, onNavigateTab }: Props) {
       <div className="flex items-center justify-between px-4 pb-4">
         <button
           onClick={handleTurnOff}
-          className="text-[11px] transition-colors"
+          className="text-[11px] transition-colors hover:underline"
           style={{ color: 'hsl(var(--muted-foreground))' }}
         >
-          Don't show again
+          Turn off · <span className="opacity-70">re-enable in Account → Accessibility</span>
         </button>
         <div className="flex gap-2">
           {!isFirst && (
