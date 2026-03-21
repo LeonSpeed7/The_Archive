@@ -86,6 +86,27 @@ export default function ARCameraTab() {
     reader.readAsDataURL(file);
   };
 
+  const cropImageToBox = (imageDataUrl: string, crop: number[]): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const [xMin, yMin, xMax, yMax] = crop;
+        const sx = Math.max(0, Math.floor(xMin * img.width));
+        const sy = Math.max(0, Math.floor(yMin * img.height));
+        const sw = Math.min(img.width - sx, Math.floor((xMax - xMin) * img.width));
+        const sh = Math.min(img.height - sy, Math.floor((yMax - yMin) * img.height));
+        if (sw <= 0 || sh <= 0) { resolve(imageDataUrl); return; }
+        const cv = document.createElement('canvas');
+        cv.width = sw;
+        cv.height = sh;
+        cv.getContext('2d')!.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+        resolve(cv.toDataURL('image/jpeg', 0.9));
+      };
+      img.onerror = () => reject(new Error('Failed to load image for cropping'));
+      img.src = imageDataUrl;
+    });
+  };
+
   const identifyObject = async () => {
     if (!capturedImage) {
       toast.error('Please capture or upload a photo first.');
@@ -106,10 +127,23 @@ export default function ARCameraTab() {
       });
       if (error) throw error;
       if (data.error) throw new Error(data.error);
+
+      // If AI returned crop coordinates, crop the image
+      if (data.crop && Array.isArray(data.crop) && data.crop.length === 4) {
+        try {
+          const cropped = await cropImageToBox(capturedImage, data.crop);
+          setCapturedImage(cropped);
+          toast.success('Object identified & image cropped!');
+        } catch {
+          toast.success('Object identified!');
+        }
+      } else {
+        toast.success('Object identified!');
+      }
+
       setAiResult(data);
       if (data.name) setObjectName(data.name);
       queryClient.invalidateQueries({ queryKey: ['ai-usage'] });
-      toast.success('Object identified!');
     } catch (err: any) {
       toast.error(err.message || 'Failed to identify object');
     } finally {
