@@ -88,10 +88,63 @@ export default function SafewordSetup() {
 }
 
 export function SafewordDisplay() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { data: safeword } = useSafeword();
   const [visible, setVisible] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [newWord, setNewWord] = useState('');
+
+  const update = useMutation({
+    mutationFn: async () => {
+      const trimmed = newWord.trim();
+      if (trimmed.length < 4) throw new Error('Safeword must be at least 4 characters');
+      const { error } = await supabase
+        .from('profiles')
+        .update({ safeword: trimmed })
+        .eq('user_id', user!.id);
+      if (error) {
+        if (error.message.includes('duplicate') || error.message.includes('unique')) {
+          throw new Error('That safeword is already taken. Choose another.');
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success('Safeword updated!');
+      setEditing(false);
+      setNewWord('');
+      queryClient.invalidateQueries({ queryKey: ['profile-safeword'] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
 
   if (!safeword) return null;
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-2 text-sm flex-wrap">
+        <Shield className="w-4 h-4 text-accent" />
+        <div className="relative">
+          <Input
+            type="text"
+            value={newWord}
+            onChange={(e) => setNewWord(e.target.value)}
+            placeholder="New safeword…"
+            className="h-8 text-xs bg-background w-40"
+            minLength={4}
+            autoFocus
+          />
+        </div>
+        <Button size="sm" className="h-8 text-xs" onClick={() => update.mutate()} disabled={newWord.trim().length < 4 || update.isPending}>
+          {update.isPending ? 'Saving…' : 'Save'}
+        </Button>
+        <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setEditing(false); setNewWord(''); }}>
+          Cancel
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-2 text-sm">
@@ -102,6 +155,12 @@ export function SafewordDisplay() {
       </code>
       <button onClick={() => setVisible(!visible)} className="text-muted-foreground hover:text-foreground">
         {visible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+      </button>
+      <button
+        onClick={() => setEditing(true)}
+        className="text-xs text-primary hover:text-primary/80 font-medium transition-colors ml-1"
+      >
+        Change
       </button>
     </div>
   );
