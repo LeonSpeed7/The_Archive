@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Camera, Globe, TreePine, LogOut } from 'lucide-react';
+import { Camera, Globe, TreePine, LogOut, BookLock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ARCameraTab from '@/components/tabs/ARCameraTab';
 import GlobalDatabaseTab from '@/components/tabs/GlobalDatabaseTab';
+import PersonalDatabaseTab from '@/components/tabs/PersonalDatabaseTab';
 import FamilyTreeTab from '@/components/tabs/FamilyTreeTab';
 
-type Tab = 'camera' | 'database' | 'tree';
+type Tab = 'camera' | 'personal' | 'database' | 'tree';
 
 const tabs: { id: Tab; label: string; icon: typeof Camera }[] = [
   { id: 'camera', label: 'AR Camera', icon: Camera },
+  { id: 'personal', label: 'My Archive', icon: BookLock },
   { id: 'database', label: 'Global Database', icon: Globe },
   { id: 'tree', label: 'Family Tree', icon: TreePine },
 ];
@@ -45,7 +47,7 @@ export default function Dashboard() {
 
       {/* Tab Navigation */}
       <nav className="border-b border-border bg-card/40">
-        <div className="container flex gap-1 py-2">
+        <div className="container flex gap-1 py-2 overflow-x-auto">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -54,7 +56,7 @@ export default function Dashboard() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`
-                  flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium
+                  flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap
                   transition-all duration-[var(--duration-state)]
                   ${isActive
                     ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
@@ -75,6 +77,7 @@ export default function Dashboard() {
       <main className="container py-8">
         <div className="animate-fade-in" key={activeTab}>
           {activeTab === 'camera' && <ARCameraTab />}
+          {activeTab === 'personal' && <PersonalDatabaseTab />}
           {activeTab === 'database' && <GlobalDatabaseTab />}
           {activeTab === 'tree' && <FamilyTreeTab />}
         </div>
