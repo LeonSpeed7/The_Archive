@@ -32,6 +32,27 @@ export type Database = {
         }
         Relationships: []
       }
+      family_connections: {
+        Row: {
+          created_at: string
+          id: string
+          requester_id: string
+          target_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          requester_id: string
+          target_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          requester_id?: string
+          target_id?: string
+        }
+        Relationships: []
+      }
       family_members: {
         Row: {
           bio: string | null
@@ -256,6 +277,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          safeword: string | null
           updated_at: string
           user_id: string
         }
@@ -264,6 +286,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          safeword?: string | null
           updated_at?: string
           user_id: string
         }
@@ -272,6 +295,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          safeword?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -314,7 +338,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      connect_by_safeword: { Args: { p_safeword: string }; Returns: string }
+      search_connected_personal_objects: {
+        Args: { p_search?: string }
+        Returns: {
+          created_at: string
+          description: string | null
+          history: string | null
+          id: string
+          image_url: string | null
+          name: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "personal_objects"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
     }
     Enums: {
       [_ in never]: never
