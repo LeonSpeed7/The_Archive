@@ -160,7 +160,7 @@ export default function GlobalDatabaseTab() {
 
       <div className="relative z-10 max-w-2xl mx-auto animate-reveal-up">
         <h2 className="font-display text-2xl font-semibold text-white">
-          Global <span style={{ color: 'hsl(18 62% 55%)' }}>Archive</span>
+          Community <span style={{ color: 'hsl(18 62% 55%)' }}>Archive</span>
         </h2>
         <p className="text-white/70 mt-1">Community timeline of archived objects — sorted by date uploaded</p>
       </div>
