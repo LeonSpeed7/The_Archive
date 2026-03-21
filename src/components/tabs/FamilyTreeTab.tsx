@@ -341,7 +341,7 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
   const dragRef = useRef({ startX: 0, startY: 0, panX: 0, panY: 0 });
   const [collapsedGens, setCollapsedGens] = useState<Set<number>>(new Set());
 
-  const { positions, canvasW, canvasH, sortedGens } = computeLayout(members, myName, myUsername, myGender);
+  const { positions, canvasW, canvasH, sortedGens, nodeWidths } = computeLayout(members, myName, myUsername, myGender);
 
   // Auto-fit
   useEffect(() => {
