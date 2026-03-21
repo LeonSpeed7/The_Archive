@@ -33,13 +33,32 @@ export default function PersonalDatabaseTab() {
   const [familySort, setFamilySort] = useState<SortKey>('date-desc');
   const [publicSort, setPublicSort] = useState<SortKey>('date-desc');
 
-  const { data: objects, isLoading } = useQuery({
+  const { data: personalObjects, isLoading } = useQuery({
     queryKey: ['personal-objects', search, user?.id],
     queryFn: async () => {
       let query = supabase
         .from('personal_objects')
         .select('*')
         .eq('user_id', user!.id)
+        .order('created_at', { ascending: false });
+      if (search.trim()) {
+        query = query.ilike('name', `%${search}%`);
+      }
+      const { data, error } = await query.limit(100);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Fetch user's public community objects
+  const { data: publicObjects } = useQuery({
+    queryKey: ['my-public-objects', search, user?.id],
+    queryFn: async () => {
+      let query = supabase
+        .from('objects')
+        .select('*')
+        .eq('created_by', user!.id)
         .order('created_at', { ascending: false });
       if (search.trim()) {
         query = query.ilike('name', `%${search}%`);
