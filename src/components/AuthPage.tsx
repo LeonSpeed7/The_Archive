@@ -9,18 +9,33 @@ export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isLogin) {
+      if (!fullName.trim()) {
+        toast.error('Full name is required');
+        return;
+      }
+      if (!username.trim()) {
+        toast.error('Username is required');
+        return;
+      }
+      if (!/^[a-zA-Z0-9_]{3,30}$/.test(username.trim())) {
+        toast.error('Username must be 3–30 characters (letters, numbers, underscores)');
+        return;
+      }
+    }
     setLoading(true);
     try {
       if (isLogin) {
         await signIn(email, password);
         toast.success('Welcome back!');
       } else {
-        await signUp(email, password, displayName);
+        await signUp(email, password, fullName.trim(), username.trim().toLowerCase());
         toast.success('Account created! Check your email to confirm.');
       }
     } catch (err: any) {
@@ -49,22 +64,42 @@ export default function AuthPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">
-                  Display Name
-                </label>
-                <Input
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Your name"
-                  className="bg-background"
-                />
-              </div>
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">
+                    Full Name <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Your full name"
+                    required
+                    className="bg-background"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">
+                    Username <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                    placeholder="e.g. grandma_rose"
+                    required
+                    maxLength={30}
+                    className="bg-background font-mono"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Others will use this to add you as a family member
+                  </p>
+                </div>
+              </>
             )}
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Email
+                Email <span className="text-destructive">*</span>
               </label>
               <Input
                 type="email"
@@ -77,7 +112,7 @@ export default function AuthPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
-                Password
+                Password <span className="text-destructive">*</span>
               </label>
               <Input
                 type="password"
