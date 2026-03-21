@@ -133,12 +133,13 @@ export default function FamilyTreeTab() {
     if (!node) return;
 
     if (connecting) {
-      // Set parent link
       if (connecting !== nodeId) {
-        setTreeLayout(prev => ({
-          nodes: {
-            ...prev.nodes,
-            [connecting]: { ...prev.nodes[connecting], x: prev.nodes[connecting]?.x ?? 0, y: prev.nodes[connecting]?.y ?? 0, parentId: nodeId },
+        setTreeLayout(prev => {
+          const existing = prev.nodes[connecting] || { x: 0, y: 0, parentId: null };
+          return {
+            nodes: {
+              ...prev.nodes,
+              [connecting]: { x: existing.x, y: existing.y, parentId: nodeId },
           },
         }));
       }
