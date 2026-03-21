@@ -509,14 +509,12 @@ function MiscConnectionLine({ from, to, relationship }: { from: NPos; to: NPos; 
     const dir = dx > 0 ? 1 : -1;
     const x1 = from.x + dir * (fromB.halfW + 3);
     const x2 = to.x - dir * (toB.halfW + 3);
-    const arcY = from.y - 36;
     return (
       <g>
-        <path
-          d={`M ${x1} ${from.y} C ${x1} ${arcY}, ${x2} ${arcY}, ${x2} ${to.y}`}
-          fill="none" stroke={rel.color} strokeWidth={1.5}
+        <line x1={x1} y1={from.y} x2={x2} y2={to.y}
+          stroke={rel.color} strokeWidth={1.5}
           strokeDasharray={rel.dash || undefined} opacity={0.45} />
-        <text x={(x1 + x2) / 2} y={arcY - 4} textAnchor="middle" fill={rel.color}
+        <text x={(x1 + x2) / 2} y={from.y - 8} textAnchor="middle" fill={rel.color}
           fontSize="7.5" fontWeight="600" opacity="0.65" fontFamily="var(--font-body)">
           {rel.label}
         </text>
