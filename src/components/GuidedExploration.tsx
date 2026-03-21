@@ -18,7 +18,7 @@ interface Step {
 const STEPS: Step[] = [
   {
     tab: 'camera',
-    title: 'AI Camera',
+    title: 'AI Archiving',
     description: 'This is your starting point. Snap a photo of any object — a family heirloom, an old tool, a vintage item — and our AI will identify it, trace its history, and add it to your archive.',
     icon: Camera,
     tip: 'Try uploading a photo of something meaningful to you to see AI identification in action.',
@@ -35,7 +35,7 @@ const STEPS: Step[] = [
     title: 'My Archive',
     description: 'Your private collection. Objects saved here are visible only to you and your connected family members. Add personal stories and memories to each item.',
     icon: BookLock,
-    tip: 'After scanning an object with AI Camera, save it here to build your personal collection.',
+    tip: 'After scanning an object with AI Archiving, save it here to build your personal collection.',
   },
   {
     tab: 'database',

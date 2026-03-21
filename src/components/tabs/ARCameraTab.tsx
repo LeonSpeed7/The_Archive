@@ -206,7 +206,7 @@ export default function ARCameraTab() {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Aperture className="w-5 h-5 text-white/90" />
-                <h2 className="font-display text-xl font-semibold text-white">AI Camera</h2>
+                <h2 className="font-display text-xl font-semibold text-white">AI Archiving</h2>
               </div>
               <p className="text-white/70 text-sm max-w-xs">
                 Capture or upload an object — AI identifies it and adds it to the archive

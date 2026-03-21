@@ -236,7 +236,7 @@ export default function GlobalDatabaseTab() {
           <div className="text-center py-16">
             <Archive className="w-10 h-10 text-white/20 mx-auto mb-3" />
             <p className="text-white/70">No objects found</p>
-            <p className="text-sm text-white/50 mt-1">Be the first to add one via the AI Camera tab</p>
+            <p className="text-sm text-white/50 mt-1">Be the first to add one via the AI Archiving tab</p>
           </div>
         )}
 
