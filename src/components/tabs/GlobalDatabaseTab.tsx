@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Archive, Users, Clock, ArrowLeft, Sparkles, Loader2, Calendar } from 'lucide-react';
+import { Search, Archive, Users, ArrowLeft, Sparkles, Loader2, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import ObjectDetail from '@/components/ObjectDetail';
@@ -18,14 +18,13 @@ interface EvolutionTimeline {
   entries: TimelineEntry[];
 }
 
-// Color palette for timeline entries (cycling)
 const TIMELINE_COLORS = [
-  { bg: 'hsl(262 80% 50%)', light: 'hsl(262 80% 95%)', text: 'hsl(262 80% 30%)' },  // purple
-  { bg: 'hsl(199 89% 48%)', light: 'hsl(199 89% 93%)', text: 'hsl(199 89% 25%)' },  // blue
-  { bg: 'hsl(142 71% 45%)', light: 'hsl(142 71% 93%)', text: 'hsl(142 71% 25%)' },  // green
-  { bg: 'hsl(25 95% 53%)',  light: 'hsl(25 95% 93%)',  text: 'hsl(25 95% 30%)' },   // orange
-  { bg: 'hsl(346 77% 50%)', light: 'hsl(346 77% 93%)', text: 'hsl(346 77% 30%)' },  // rose
-  { bg: 'hsl(173 80% 40%)', light: 'hsl(173 80% 92%)', text: 'hsl(173 80% 22%)' },  // teal
+  { bg: 'hsl(262 80% 50%)', light: 'hsl(262 80% 95%)', text: 'hsl(262 80% 30%)' },
+  { bg: 'hsl(199 89% 48%)', light: 'hsl(199 89% 93%)', text: 'hsl(199 89% 25%)' },
+  { bg: 'hsl(142 71% 45%)', light: 'hsl(142 71% 93%)', text: 'hsl(142 71% 25%)' },
+  { bg: 'hsl(25 95% 53%)',  light: 'hsl(25 95% 93%)',  text: 'hsl(25 95% 30%)' },
+  { bg: 'hsl(346 77% 50%)', light: 'hsl(346 77% 93%)', text: 'hsl(346 77% 30%)' },
+  { bg: 'hsl(173 80% 40%)', light: 'hsl(173 80% 92%)', text: 'hsl(173 80% 22%)' },
 ];
 
 export default function GlobalDatabaseTab() {
@@ -34,6 +33,7 @@ export default function GlobalDatabaseTab() {
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [evolutionView, setEvolutionView] = useState<EvolutionTimeline | null>(null);
   const [generatingFor, setGeneratingFor] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: objects, isLoading } = useQuery({
     queryKey: ['all-objects', search],
@@ -70,14 +70,18 @@ export default function GlobalDatabaseTab() {
     }
   };
 
+  const scroll = (direction: 'left' | 'right') => {
+    scrollRef.current?.scrollBy({ left: direction === 'left' ? -320 : 320, behavior: 'smooth' });
+  };
+
   if (selectedObjectId) {
     return <ObjectDetail objectId={selectedObjectId} onBack={() => setSelectedObjectId(null)} />;
   }
 
-  // Evolution timeline view - Vertical Milestones style
+  // Evolution timeline view
   if (evolutionView) {
     return (
-      <div className="max-w-2xl mx-auto space-y-8">
+      <div className="max-w-3xl mx-auto space-y-8">
         <button
           onClick={() => setEvolutionView(null)}
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors active:scale-[0.97]"
@@ -90,48 +94,50 @@ export default function GlobalDatabaseTab() {
           <p className="text-muted-foreground mt-1">AI-generated evolution timeline</p>
         </div>
 
+        {/* Horizontal evolution timeline */}
         <div className="animate-reveal-up stagger-1 relative">
-          {/* Vertical line */}
-          <div className="absolute left-7 top-0 bottom-0 w-0.5 bg-border" />
+          <div className="flex gap-2 mb-3 justify-end">
+            <Button variant="outline" size="icon" className="w-8 h-8" onClick={() => scroll('left')}>
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <Button variant="outline" size="icon" className="w-8 h-8" onClick={() => scroll('right')}>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
 
-          <div className="space-y-1">
-            {evolutionView.entries.map((entry, i) => {
-              const color = TIMELINE_COLORS[i % TIMELINE_COLORS.length];
-              return (
-                <div key={i} className="relative flex items-stretch gap-5 group" style={{ animationDelay: `${i * 80}ms` }}>
-                  {/* Icon circle */}
-                  <div className="relative z-10 flex-shrink-0 w-14 flex items-start justify-center pt-5">
-                    <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg transition-transform duration-300 group-hover:scale-110"
-                      style={{ backgroundColor: color.bg }}
-                    >
-                      <Calendar className="w-5 h-5 text-white" />
+          <div className="relative overflow-hidden">
+            <div ref={scrollRef} className="flex gap-0 overflow-x-auto pb-4 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+              {evolutionView.entries.map((entry, i) => {
+                const color = TIMELINE_COLORS[i % TIMELINE_COLORS.length];
+                const isLast = i === evolutionView.entries.length - 1;
+                return (
+                  <div key={i} className="flex-shrink-0 flex flex-col items-center" style={{ width: 220, animationDelay: `${i * 80}ms` }}>
+                    {/* Date label */}
+                    <p className="text-xs font-mono font-bold tracking-wider mb-2" style={{ color: color.bg }}>
+                      {entry.year}
+                    </p>
+                    {/* Dot + line */}
+                    <div className="flex items-center w-full">
+                      <div className="flex-1 h-0.5" style={{ backgroundColor: i === 0 ? 'transparent' : color.bg + '40' }} />
+                      <div className="w-4 h-4 rounded-full border-2 flex-shrink-0" style={{ borderColor: color.bg, backgroundColor: color.light }} />
+                      <div className="flex-1 h-0.5" style={{ backgroundColor: isLast ? 'transparent' : color.bg + '40' }} />
+                    </div>
+                    {/* Card below */}
+                    <div className="mt-3 w-[200px] rounded-xl border px-4 py-3" style={{ borderColor: color.bg + '30', backgroundColor: color.light + '40' }}>
+                      <h4 className="font-display text-sm font-semibold text-foreground leading-tight">{entry.name}</h4>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-3">{entry.description}</p>
                     </div>
                   </div>
-
-                  {/* Content card */}
-                  <div className="flex-1 py-2">
-                    <div
-                      className="rounded-xl border px-5 py-4 transition-all duration-300 group-hover:shadow-md"
-                      style={{ borderColor: color.bg + '30', backgroundColor: color.light + '40' }}
-                    >
-                      <p className="text-xs font-mono font-bold tracking-wider mb-0.5" style={{ color: color.bg }}>
-                        {entry.year}
-                      </p>
-                      <h4 className="font-display text-base font-semibold text-foreground">{entry.name}</h4>
-                      <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{entry.description}</p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  // Main timeline
+  // Main archive
   const allTimelineObjects = [
     ...(objects?.map(o => ({ ...o, _source: 'global' as const })) ?? []),
     ...(connectedObjects?.map(o => ({ ...o, _source: 'connected' as const })) ?? []),
@@ -140,20 +146,20 @@ export default function GlobalDatabaseTab() {
   const uniqueNames = [...new Set(objects?.map(o => o.name) ?? [])];
 
   return (
-    <div className="max-w-2xl mx-auto space-y-10">
-      <div className="animate-reveal-up">
+    <div className="space-y-10 max-w-[100vw]">
+      <div className="max-w-2xl mx-auto animate-reveal-up">
         <h2 className="font-display text-2xl font-semibold text-foreground">
           Global <span className="text-primary">Archive</span>
         </h2>
-        <p className="text-muted-foreground mt-1">Community timeline of archived objects</p>
+        <p className="text-muted-foreground mt-1">Community timeline of archived objects — sorted by date uploaded</p>
       </div>
 
-      <div className="animate-reveal-up stagger-1 relative">
+      <div className="max-w-2xl mx-auto animate-reveal-up stagger-1 relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search the archive..." className="pl-10 bg-background" />
       </div>
 
-      {/* Vertical Milestones Timeline */}
+      {/* Horizontal Timeline */}
       <div className="animate-reveal-up stagger-2">
         {isLoading && <p className="text-muted-foreground text-center py-8">Loading archive...</p>}
 
@@ -167,57 +173,73 @@ export default function GlobalDatabaseTab() {
 
         {allTimelineObjects.length > 0 && (
           <div className="relative">
-            {/* Vertical spine */}
-            <div className="absolute left-7 top-0 bottom-0 w-0.5 bg-border" />
+            {/* Scroll arrows */}
+            <div className="flex gap-2 mb-3 justify-end px-4">
+              <Button variant="outline" size="icon" className="w-8 h-8" onClick={() => scroll('left')}>
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="icon" className="w-8 h-8" onClick={() => scroll('right')}>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
 
-            <div className="space-y-1">
+            <div ref={scrollRef} className="flex gap-0 overflow-x-auto pb-6 px-4" style={{ scrollbarWidth: 'none' }}>
               {allTimelineObjects.map((obj, i) => {
                 const color = TIMELINE_COLORS[i % TIMELINE_COLORS.length];
-                const originDate = (obj as any).estimated_origin;
+                const isLast = i === allTimelineObjects.length - 1;
+                const uploadDate = new Date(obj.created_at);
+                const estimatedOrigin = (obj as any).estimated_origin;
+
                 return (
                   <button
                     key={`${obj._source}-${obj.id}`}
                     onClick={() => setSelectedObjectId(obj.id)}
-                    className="relative flex items-stretch gap-5 group w-full text-left"
+                    className="flex-shrink-0 flex flex-col items-center group"
+                    style={{ width: 220 }}
                   >
-                    {/* Icon */}
-                    <div className="relative z-10 flex-shrink-0 w-14 flex items-start justify-center pt-4">
+                    {/* Upload date label */}
+                    <p className="text-[10px] font-mono font-bold tracking-wider mb-2 opacity-70" style={{ color: color.bg }}>
+                      {uploadDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+
+                    {/* Horizontal spine: line — dot — line */}
+                    <div className="flex items-center w-full">
+                      <div className="flex-1 h-0.5" style={{ backgroundColor: i === 0 ? 'transparent' : 'hsl(var(--border))' }} />
                       <div
-                        className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg transition-transform duration-300 group-hover:scale-110 overflow-hidden"
-                        style={{ backgroundColor: obj.image_url ? undefined : color.bg }}
+                        className="w-5 h-5 rounded-full border-[3px] flex-shrink-0 transition-transform duration-200 group-hover:scale-125 overflow-hidden"
+                        style={{ borderColor: color.bg, backgroundColor: color.light }}
                       >
-                        {obj.image_url ? (
-                          <img src={obj.image_url} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <Clock className="w-5 h-5 text-white" />
+                        {obj.image_url && (
+                          <img src={obj.image_url} alt="" className="w-full h-full object-cover rounded-full" />
                         )}
                       </div>
+                      <div className="flex-1 h-0.5" style={{ backgroundColor: isLast ? 'transparent' : 'hsl(var(--border))' }} />
                     </div>
 
                     {/* Card */}
-                    <div className="flex-1 py-1.5">
-                      <div
-                        className="rounded-xl border px-5 py-4 transition-all duration-300 group-hover:shadow-md"
-                        style={{ borderColor: color.bg + '30', backgroundColor: color.light + '40' }}
-                      >
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <p className="text-xs font-mono font-bold tracking-wider" style={{ color: color.bg }}>
-                            {originDate || new Date(obj.created_at).toLocaleDateString()}
-                          </p>
-                          {obj._source === 'connected' && (
-                            <span className="inline-flex items-center gap-1 text-xs bg-accent/15 text-accent px-1.5 py-0.5 rounded-full">
-                              <Users className="w-3 h-3" />
-                              Family
-                            </span>
-                          )}
-                        </div>
-                        <h4 className="font-display text-base font-semibold text-foreground group-hover:text-primary transition-colors">
+                    <div
+                      className="mt-3 w-[200px] rounded-xl border px-4 py-3 text-left transition-all duration-300 group-hover:shadow-md group-hover:-translate-y-1"
+                      style={{ borderColor: color.bg + '30', backgroundColor: color.light + '40' }}
+                    >
+                      {obj.image_url && (
+                        <img src={obj.image_url} alt={obj.name} className="w-full h-24 object-cover rounded-lg mb-2" />
+                      )}
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <h4 className="font-display text-sm font-semibold text-foreground leading-tight truncate group-hover:text-primary transition-colors">
                           {obj.name}
                         </h4>
-                        {obj.description && (
-                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{obj.description}</p>
+                        {obj._source === 'connected' && (
+                          <Users className="w-3 h-3 text-accent flex-shrink-0" />
                         )}
                       </div>
+                      {estimatedOrigin && (
+                        <p className="text-[10px] font-mono text-primary font-semibold mb-1">
+                          Origin: {estimatedOrigin}
+                        </p>
+                      )}
+                      {obj.description && (
+                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{obj.description}</p>
+                      )}
                     </div>
                   </button>
                 );
@@ -229,7 +251,7 @@ export default function GlobalDatabaseTab() {
 
       {/* Explore Evolutions */}
       {uniqueNames.length > 0 && (
-        <div className="animate-reveal-up stagger-3 space-y-4 pt-6 border-t border-border">
+        <div className="max-w-2xl mx-auto animate-reveal-up stagger-3 space-y-4 pt-6 border-t border-border">
           <div>
             <h3 className="font-display text-lg font-semibold text-foreground">
               Explore <span className="text-primary">Evolutions</span>
