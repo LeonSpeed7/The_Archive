@@ -389,6 +389,26 @@ export type Database = {
             }
             Returns: string
           }
+      get_personal_object_if_allowed: {
+        Args: { p_object_id: string }
+        Returns: {
+          created_at: string
+          description: string | null
+          estimated_origin: string | null
+          history: string | null
+          id: string
+          image_url: string | null
+          name: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "personal_objects"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       search_connected_personal_objects: {
         Args: { p_search?: string }
         Returns: {
