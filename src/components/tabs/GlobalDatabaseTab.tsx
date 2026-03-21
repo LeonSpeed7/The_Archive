@@ -219,7 +219,7 @@ export default function GlobalDatabaseTab() {
                     key={`${obj._source}-${obj.id}`}
                     onClick={() => {
                       setSelectedObjectId(obj.id);
-                      setSelectedSource(obj._source === 'connected' ? 'personal' : 'global');
+                      setSelectedSource(obj._source === 'global' ? 'global' : 'personal');
                     }}
                     className="flex-shrink-0 flex flex-col items-center group no-underline"
                     style={{ width: 220, textDecoration: 'none' }}
