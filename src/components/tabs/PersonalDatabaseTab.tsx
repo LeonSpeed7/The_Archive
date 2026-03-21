@@ -109,8 +109,10 @@ export default function PersonalDatabaseTab() {
     return sortObjects(combined, publicSort);
   }, [personalObjects, publicObjects, publicSort]);
 
+  const [selectedSource, setSelectedSource] = useState<'personal' | 'community'>('personal');
+
   if (viewMode === 'detail' && selectedObjectId) {
-    return <ObjectDetail objectId={selectedObjectId} source="personal" onBack={() => { setViewMode('personal'); setSelectedObjectId(null); }} />;
+    return <ObjectDetail objectId={selectedObjectId} source={selectedSource === 'community' ? 'global' : 'personal'} onBack={() => { setViewMode('personal'); setSelectedObjectId(null); }} />;
   }
 
   return (
