@@ -33,13 +33,32 @@ export default function PersonalDatabaseTab() {
   const [familySort, setFamilySort] = useState<SortKey>('date-desc');
   const [publicSort, setPublicSort] = useState<SortKey>('date-desc');
 
-  const { data: objects, isLoading } = useQuery({
+  const { data: personalObjects, isLoading } = useQuery({
     queryKey: ['personal-objects', search, user?.id],
     queryFn: async () => {
       let query = supabase
         .from('personal_objects')
         .select('*')
         .eq('user_id', user!.id)
+        .order('created_at', { ascending: false });
+      if (search.trim()) {
+        query = query.ilike('name', `%${search}%`);
+      }
+      const { data, error } = await query.limit(100);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Fetch user's public community objects
+  const { data: publicObjects } = useQuery({
+    queryKey: ['my-public-objects', search, user?.id],
+    queryFn: async () => {
+      let query = supabase
+        .from('objects')
+        .select('*')
+        .eq('created_by', user!.id)
         .order('created_at', { ascending: false });
       if (search.trim()) {
         query = query.ilike('name', `%${search}%`);
@@ -77,17 +96,23 @@ export default function PersonalDatabaseTab() {
   });
 
   const familyItems = useMemo(() => {
-    const items = objects?.filter((o: any) => (o as any).visibility !== 'public') ?? [];
+    const items = personalObjects?.filter((o: any) => (o as any).visibility !== 'public') ?? [];
     return sortObjects(items, familySort);
-  }, [objects, familySort]);
+  }, [personalObjects, familySort]);
 
   const publicItems = useMemo(() => {
-    const items = objects?.filter((o: any) => (o as any).visibility === 'public') ?? [];
-    return sortObjects(items, publicSort);
-  }, [objects, publicSort]);
+    // Personal objects marked public + community objects created by user
+    const personalPublic = personalObjects?.filter((o: any) => (o as any).visibility === 'public').map((o: any) => ({ ...o, _source: 'personal' })) ?? [];
+    const communityOwn = publicObjects?.map((o: any) => ({ ...o, _source: 'community', visibility: 'public' })) ?? [];
+    // Deduplicate by name+image in case same object exists in both
+    const combined = [...personalPublic, ...communityOwn];
+    return sortObjects(combined, publicSort);
+  }, [personalObjects, publicObjects, publicSort]);
+
+  const [selectedSource, setSelectedSource] = useState<'personal' | 'community'>('personal');
 
   if (viewMode === 'detail' && selectedObjectId) {
-    return <ObjectDetail objectId={selectedObjectId} source="personal" onBack={() => { setViewMode('personal'); setSelectedObjectId(null); }} />;
+    return <ObjectDetail objectId={selectedObjectId} source={selectedSource === 'community' ? 'global' : 'personal'} onBack={() => { setViewMode('personal'); setSelectedObjectId(null); }} />;
   }
 
   return (
@@ -119,7 +144,7 @@ export default function PersonalDatabaseTab() {
           items={familyItems}
           sortKey={familySort}
           onSortChange={setFamilySort}
-          onSelect={(id) => { setSelectedObjectId(id); setViewMode('detail'); }}
+          onSelect={(id, obj) => { setSelectedSource(obj?._source === 'community' ? 'community' : 'personal'); setSelectedObjectId(id); setViewMode('detail'); }}
           onDelete={(id) => deleteObject.mutate(id)}
           onToggleVisibility={(id, vis) => toggleVisibility.mutate({ id, visibility: vis })}
           toggleLabel="Move to Public"
@@ -136,7 +161,7 @@ export default function PersonalDatabaseTab() {
           items={publicItems}
           sortKey={publicSort}
           onSortChange={setPublicSort}
-          onSelect={(id) => { setSelectedObjectId(id); setViewMode('detail'); }}
+          onSelect={(id, obj) => { setSelectedSource(obj?._source === 'community' ? 'community' : 'personal'); setSelectedObjectId(id); setViewMode('detail'); }}
           onDelete={(id) => deleteObject.mutate(id)}
           onToggleVisibility={(id, vis) => toggleVisibility.mutate({ id, visibility: vis })}
           toggleLabel="Move to Family"
@@ -159,7 +184,7 @@ function VisibilityColumn({
   items: any[];
   sortKey: SortKey;
   onSortChange: (key: SortKey) => void;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, obj: any) => void;
   onDelete: (id: string) => void;
   onToggleVisibility: (id: string, vis: string) => void;
   toggleLabel: string;
@@ -212,7 +237,7 @@ function VisibilityColumn({
             className="group rounded-xl border border-border bg-background p-3 hover:shadow-md hover:shadow-foreground/5 transition-all duration-300"
           >
             <button
-              onClick={() => onSelect(obj.id)}
+              onClick={() => onSelect(obj.id, obj)}
               className="w-full text-left active:scale-[0.98] transition-transform"
             >
               <div className="flex gap-3 items-start">
