@@ -6,44 +6,44 @@
 
 @layer base {
   :root {
-    --background: 36 33% 97%;
-    --foreground: 24 20% 16%;
+    --background: 0 0% 96%;
+    --foreground: 0 0% 18%;
 
-    --card: 36 30% 95%;
-    --card-foreground: 24 20% 16%;
+    --card: 0 0% 93%;
+    --card-foreground: 0 0% 18%;
 
-    --popover: 36 33% 97%;
-    --popover-foreground: 24 20% 16%;
+    --popover: 0 0% 96%;
+    --popover-foreground: 0 0% 18%;
 
-    --primary: 18 62% 45%;
-    --primary-foreground: 36 33% 97%;
+    --primary: 168 45% 43%;
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 36 20% 90%;
-    --secondary-foreground: 24 20% 20%;
+    --secondary: 210 20% 93%;
+    --secondary-foreground: 210 29% 24%;
 
-    --muted: 36 15% 92%;
-    --muted-foreground: 24 10% 46%;
+    --muted: 0 0% 93%;
+    --muted-foreground: 180 5% 53%;
 
-    --accent: 152 28% 42%;
-    --accent-foreground: 36 33% 97%;
+    --accent: 36 86% 50%;
+    --accent-foreground: 0 0% 98%;
 
     --destructive: 0 72% 51%;
-    --destructive-foreground: 36 33% 97%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 30 18% 86%;
-    --input: 30 18% 86%;
-    --ring: 18 62% 45%;
+    --border: 210 9% 74%;
+    --input: 210 9% 74%;
+    --ring: 168 45% 43%;
 
     --radius: 0.625rem;
 
-    --sidebar-background: 36 30% 95%;
-    --sidebar-foreground: 24 20% 16%;
-    --sidebar-primary: 18 62% 45%;
-    --sidebar-primary-foreground: 36 33% 97%;
-    --sidebar-accent: 36 20% 90%;
-    --sidebar-accent-foreground: 24 20% 20%;
-    --sidebar-border: 30 18% 86%;
-    --sidebar-ring: 18 62% 45%;
+    --sidebar-background: 0 0% 93%;
+    --sidebar-foreground: 0 0% 18%;
+    --sidebar-primary: 168 45% 43%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 210 20% 93%;
+    --sidebar-accent-foreground: 210 29% 24%;
+    --sidebar-border: 210 9% 74%;
+    --sidebar-ring: 168 45% 43%;
 
     --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
     --font-body: 'Source Sans 3', 'Segoe UI', system-ui, sans-serif;
@@ -52,6 +52,14 @@
     --duration-entrance: 600ms;
     --duration-micro: 120ms;
     --duration-state: 250ms;
+
+    /* Tab-specific accent colors */
+    --color-camera: 187 100% 42%;
+    --color-community: 28 80% 52%;
+    --color-tree: 210 18% 30%;
+    --color-success: 145 50% 42%;
+    --color-highlight: 48 87% 50%;
+    --color-nav: 210 29% 24%;
   }
 }
 
