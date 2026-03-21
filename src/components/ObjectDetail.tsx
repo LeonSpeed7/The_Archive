@@ -263,7 +263,7 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
             <Sparkles className="w-4 h-4 text-primary" />
             <h3 className="font-display text-lg font-semibold text-foreground">Evolution Timeline</h3>
           </div>
-          {evolution && evolution.length > 0 && (
+          {enrichedEvolution && enrichedEvolution.length > 0 && (
             <div className="flex gap-1">
               <Button variant="outline" size="icon" className="w-7 h-7" onClick={() => scrollEvo('left')}>
                 <ChevronLeft className="w-3.5 h-3.5" />
