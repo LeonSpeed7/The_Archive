@@ -19,10 +19,11 @@ serve(async (req) => {
         content: `You are a cultural heritage and antique object identification expert. When given an image of an object (and optionally a name hint from the user), you must:
 1. Identify what the object is
 2. Provide a clear, concise name for it
-3. Write a rich historical description (2-4 paragraphs) covering its origins, cultural significance, typical era/region, and any interesting facts
+3. Estimate when this type of object was first created or when this specific object likely dates from (e.g. "~1920s", "circa 500 BC", "Mid-18th century")
+4. Write a rich historical description (2-4 paragraphs) covering its origins, cultural significance, typical era/region, and any interesting facts
 
 Respond ONLY with valid JSON in this exact format:
-{"name": "Object Name", "description": "Brief one-line description", "history": "Detailed historical context..."}`
+{"name": "Object Name", "description": "Brief one-line description", "estimated_origin": "~1920s", "history": "Detailed historical context..."}`
       },
     ];
 
@@ -34,7 +35,7 @@ Respond ONLY with valid JSON in this exact format:
       });
     }
 
-    let textPrompt = "Identify this object and provide its historical background.";
+    let textPrompt = "Identify this object, estimate when it was created/originated, and provide its historical background.";
     if (userHint) {
       textPrompt += ` The user thinks it might be: "${userHint}".`;
     }
@@ -73,7 +74,6 @@ Respond ONLY with valid JSON in this exact format:
     const data = await response.json();
     const raw = data.choices?.[0]?.message?.content ?? "";
 
-    // Extract JSON from the response (handle markdown code blocks)
     let jsonStr = raw;
     const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) jsonStr = jsonMatch[1].trim();
@@ -82,8 +82,7 @@ Respond ONLY with valid JSON in this exact format:
     try {
       result = JSON.parse(jsonStr);
     } catch {
-      // Fallback: use the raw text as history
-      result = { name: userHint || "Unknown Object", description: "AI-identified object", history: raw };
+      result = { name: userHint || "Unknown Object", description: "AI-identified object", estimated_origin: "Unknown", history: raw };
     }
 
     return new Response(JSON.stringify(result), {
