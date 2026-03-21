@@ -18,7 +18,7 @@ export default function ARCameraTab() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [objectName, setObjectName] = useState('');
   const [userDescription, setUserDescription] = useState('');
-  const [aiResult, setAiResult] = useState<{ name: string; description: string; history: string } | null>(null);
+  const [aiResult, setAiResult] = useState<{ name: string; description: string; history: string; estimated_origin?: string } | null>(null);
   const [isIdentifying, setIsIdentifying] = useState(false);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<'global' | 'personal'>('global');
@@ -124,6 +124,7 @@ export default function ARCameraTab() {
         name: objectName || aiResult?.name || 'Unknown Object',
         description: userDescription || aiResult?.description || null,
         history: aiResult?.history || null,
+        estimated_origin: aiResult?.estimated_origin || null,
         image_url: capturedImage,
       };
       if (archiveTarget === 'global') {
