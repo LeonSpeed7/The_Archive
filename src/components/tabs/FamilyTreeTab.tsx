@@ -520,7 +520,7 @@ export default function FamilyTreeTab() {
       <div className="animate-fade-in flex items-start justify-between gap-4">
         <div>
           <h2 className="font-display text-2xl font-semibold text-foreground">Family Tree</h2>
-          <p className="text-muted-foreground mt-1 text-sm">Connect with family · drag to pan · scroll to zoom</p>
+          <p className="text-muted-foreground mt-1 text-sm">Connect with family · drag to pan</p>
         </div>
         <Button size="sm" onClick={() => setShowAddForm(!showAddForm)}>
           <Plus className="w-4 h-4 mr-1.5" />
