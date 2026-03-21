@@ -161,11 +161,11 @@ export default function FamilyTreeTab() {
     if (!draggingId) return;
     const newX = e.clientX / zoom - dragOffset.x;
     const newY = e.clientY / zoom - dragOffset.y;
-    const existing = treeLayout.nodes[draggingId] || {};
+    const existing = treeLayout.nodes[draggingId] || { x: 0, y: 0, parentId: null };
     setTreeLayout(prev => ({
       nodes: {
         ...prev.nodes,
-        [draggingId]: { ...existing, x: newX, y: newY, parentId: existing.parentId ?? null },
+        [draggingId]: { x: newX, y: newY, parentId: existing.parentId ?? null },
       },
     }));
   }, [draggingId, dragOffset, zoom, treeLayout]);
