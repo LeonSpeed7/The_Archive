@@ -7,6 +7,17 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
+const INVERSE_RELATIONSHIPS: Record<string, string> = {
+  parent: 'child', child: 'parent',
+  grandparent: 'grandchild', grandchild: 'grandparent',
+  uncle_aunt: 'nephew_niece', nephew_niece: 'uncle_aunt',
+  sibling: 'sibling', spouse: 'spouse', cousin: 'cousin',
+  other: 'other',
+};
+function invertRelationship(rel: string): string {
+  return INVERSE_RELATIONSHIPS[rel] || rel;
+}
+
 export function useConnections() {
   const { user } = useAuth();
   return useQuery({
@@ -28,7 +39,9 @@ export function useConnections() {
       if (pErr) throw pErr;
       return data.map(c => {
         const otherId = c.requester_id === user!.id ? c.target_id : c.requester_id;
+        const isRequester = c.requester_id === user!.id;
         const profile = profiles?.find(p => p.user_id === otherId);
+        const storedRel = (c as any).relationship || 'other';
         return {
           ...c,
           connected_user_id: otherId,
@@ -36,7 +49,7 @@ export function useConnections() {
           connected_username: profile?.username || '',
           connected_gender: (profile as any)?.gender || 'prefer_not_to_say',
           connected_bio: (profile as any)?.bio || '',
-          relationship: (c as any).relationship || 'other',
+          relationship: isRequester ? storedRel : invertRelationship(storedRel),
           note: (c as any).note || '',
         };
       });
