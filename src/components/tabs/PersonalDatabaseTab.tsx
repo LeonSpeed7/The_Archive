@@ -96,14 +96,18 @@ export default function PersonalDatabaseTab() {
   });
 
   const familyItems = useMemo(() => {
-    const items = objects?.filter((o: any) => (o as any).visibility !== 'public') ?? [];
+    const items = personalObjects?.filter((o: any) => (o as any).visibility !== 'public') ?? [];
     return sortObjects(items, familySort);
-  }, [objects, familySort]);
+  }, [personalObjects, familySort]);
 
   const publicItems = useMemo(() => {
-    const items = objects?.filter((o: any) => (o as any).visibility === 'public') ?? [];
-    return sortObjects(items, publicSort);
-  }, [objects, publicSort]);
+    // Personal objects marked public + community objects created by user
+    const personalPublic = personalObjects?.filter((o: any) => (o as any).visibility === 'public').map((o: any) => ({ ...o, _source: 'personal' })) ?? [];
+    const communityOwn = publicObjects?.map((o: any) => ({ ...o, _source: 'community', visibility: 'public' })) ?? [];
+    // Deduplicate by name+image in case same object exists in both
+    const combined = [...personalPublic, ...communityOwn];
+    return sortObjects(combined, publicSort);
+  }, [personalObjects, publicObjects, publicSort]);
 
   if (viewMode === 'detail' && selectedObjectId) {
     return <ObjectDetail objectId={selectedObjectId} source="personal" onBack={() => { setViewMode('personal'); setSelectedObjectId(null); }} />;
