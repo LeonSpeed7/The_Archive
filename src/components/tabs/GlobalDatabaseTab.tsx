@@ -172,18 +172,34 @@ export default function GlobalDatabaseTab() {
         )}
 
         {allTimelineObjects.length > 0 && (
-          <div className="relative">
+          <div className="relative rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, hsl(220 20% 12%), hsl(230 18% 16%), hsl(215 22% 14%))' }}>
+            {/* Subtle grid pattern overlay */}
+            <div
+              className="absolute inset-0 opacity-[0.04] pointer-events-none"
+              style={{
+                backgroundImage: `linear-gradient(hsl(200 60% 70%) 1px, transparent 1px), linear-gradient(90deg, hsl(200 60% 70%) 1px, transparent 1px)`,
+                backgroundSize: '40px 40px',
+              }}
+            />
+            {/* Radial glow in center */}
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: 'radial-gradient(ellipse at 50% 60%, hsl(18 62% 45% / 0.08) 0%, transparent 60%)',
+              }}
+            />
+
             {/* Scroll arrows */}
-            <div className="flex gap-2 mb-3 justify-end px-4">
-              <Button variant="outline" size="icon" className="w-8 h-8" onClick={() => scroll('left')}>
+            <div className="relative z-10 flex gap-2 pt-4 pb-2 justify-end px-5">
+              <Button variant="outline" size="icon" className="w-8 h-8 bg-white/10 border-white/15 text-white/70 hover:bg-white/20 hover:text-white" onClick={() => scroll('left')}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <Button variant="outline" size="icon" className="w-8 h-8" onClick={() => scroll('right')}>
+              <Button variant="outline" size="icon" className="w-8 h-8 bg-white/10 border-white/15 text-white/70 hover:bg-white/20 hover:text-white" onClick={() => scroll('right')}>
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
 
-            <div ref={scrollRef} className="flex gap-0 overflow-x-auto pb-6 px-4 items-end" style={{ scrollbarWidth: 'none' }}>
+            <div ref={scrollRef} className="relative z-10 flex gap-0 overflow-x-auto pb-8 pt-2 px-5" style={{ scrollbarWidth: 'none' }}>
               {allTimelineObjects.map((obj, i) => {
                 const color = TIMELINE_COLORS[i % TIMELINE_COLORS.length];
                 const isLast = i === allTimelineObjects.length - 1;
@@ -195,55 +211,48 @@ export default function GlobalDatabaseTab() {
                   <button
                     key={`${obj._source}-${obj.id}`}
                     onClick={() => setSelectedObjectId(obj.id)}
-                    className={`flex-shrink-0 flex flex-col items-center group transition-all duration-500 ${
-                      isCenterItem ? 'scale-110 z-10 -mt-2' : ''
-                    }`}
-                    style={{ width: isCenterItem ? 240 : 220 }}
+                    className="flex-shrink-0 flex flex-col items-center group"
+                    style={{ width: 220 }}
                   >
                     {/* Upload date label */}
-                    <p className={`font-mono font-bold tracking-wider mb-2 ${isCenterItem ? 'text-xs' : 'text-[10px] opacity-70'}`} style={{ color: color.bg }}>
+                    <p className="text-[10px] font-mono font-bold tracking-wider mb-2 text-white/50">
                       {uploadDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
 
-                    {/* Horizontal spine: line — icon — line */}
+                    {/* Horizontal spine — uniform height */}
                     <div className="flex items-center w-full">
-                      <div className="flex-1 h-0.5" style={{ backgroundColor: i === 0 ? 'transparent' : 'hsl(var(--border))' }} />
+                      <div className="flex-1 h-px" style={{ backgroundColor: i === 0 ? 'transparent' : 'hsl(200 30% 40% / 0.3)' }} />
                       <div
                         className={`rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-300 group-hover:scale-125 ${
-                          isCenterItem
-                            ? 'w-10 h-10 shadow-lg ring-4 ring-offset-2 ring-offset-background'
-                            : 'w-7 h-7 shadow-md'
+                          isCenterItem ? 'w-4 h-4' : 'w-3 h-3'
                         }`}
                         style={{
-                          backgroundColor: color.bg,
-                          boxShadow: isCenterItem ? `0 0 20px ${color.bg}50, 0 4px 12px ${color.bg}30` : `0 2px 8px ${color.bg}25`,
-                          ...(isCenterItem ? { ringColor: color.bg + '40' } : {}),
+                          backgroundColor: isCenterItem ? color.bg : 'hsl(200 30% 50% / 0.5)',
+                          boxShadow: isCenterItem ? `0 0 12px ${color.bg}60` : 'none',
                         }}
-                      >
-                        {obj.image_url ? (
-                          <img src={obj.image_url} alt="" className={`object-cover rounded-full ${isCenterItem ? 'w-9 h-9' : 'w-6 h-6'}`} />
-                        ) : (
-                          <Archive className={`text-white ${isCenterItem ? 'w-5 h-5' : 'w-3.5 h-3.5'}`} />
-                        )}
-                      </div>
-                      <div className="flex-1 h-0.5" style={{ backgroundColor: isLast ? 'transparent' : 'hsl(var(--border))' }} />
+                      />
+                      <div className="flex-1 h-px" style={{ backgroundColor: isLast ? 'transparent' : 'hsl(200 30% 40% / 0.3)' }} />
                     </div>
 
-                    {/* Card */}
+                    {/* Card popup */}
                     <div
-                      className={`mt-3 rounded-xl border px-4 py-3 text-left transition-all duration-300 group-hover:shadow-md group-hover:-translate-y-1 ${
-                        isCenterItem ? 'w-[216px] shadow-lg border-2' : 'w-[200px]'
+                      className={`mt-4 w-[200px] rounded-xl border px-4 py-3 text-left transition-all duration-300 backdrop-blur-sm group-hover:-translate-y-1 ${
+                        isCenterItem
+                          ? 'shadow-lg shadow-black/30 border-2 scale-105 -mt-0'
+                          : 'group-hover:shadow-md group-hover:shadow-black/20'
                       }`}
                       style={{
-                        borderColor: isCenterItem ? color.bg + '60' : color.bg + '30',
-                        backgroundColor: isCenterItem ? color.light + '70' : color.light + '40',
+                        borderColor: isCenterItem ? color.bg + '80' : 'hsl(200 20% 30% / 0.4)',
+                        backgroundColor: isCenterItem ? color.bg + '18' : 'hsl(220 18% 18% / 0.7)',
                       }}
                     >
                       {obj.image_url && (
-                        <img src={obj.image_url} alt={obj.name} className={`w-full object-cover rounded-lg mb-2 ${isCenterItem ? 'h-28' : 'h-24'}`} />
+                        <img src={obj.image_url} alt={obj.name} className="w-full h-24 object-cover rounded-lg mb-2 opacity-90" />
                       )}
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <h4 className={`font-display font-semibold text-foreground leading-tight truncate group-hover:text-primary transition-colors ${isCenterItem ? 'text-base' : 'text-sm'}`}>
+                        <h4 className={`font-display text-sm font-semibold leading-tight truncate transition-colors ${
+                          isCenterItem ? 'text-white' : 'text-white/85 group-hover:text-white'
+                        }`}>
                           {obj.name}
                         </h4>
                         {obj._source === 'connected' && (
@@ -251,12 +260,12 @@ export default function GlobalDatabaseTab() {
                         )}
                       </div>
                       {estimatedOrigin && (
-                        <p className="text-[10px] font-mono text-primary font-semibold mb-1">
+                        <p className="text-[10px] font-mono font-semibold mb-1" style={{ color: color.bg }}>
                           Origin: {estimatedOrigin}
                         </p>
                       )}
                       {obj.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{obj.description}</p>
+                        <p className="text-xs text-white/50 line-clamp-2 leading-relaxed">{obj.description}</p>
                       )}
                     </div>
                   </button>
