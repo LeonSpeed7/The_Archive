@@ -45,16 +45,27 @@ const GENDER_CONFIG: Record<string, { shape: 'circle' | 'rect' | 'diamond'; fill
 };
 
 // Spacing constants — tuned so nothing overlaps
-const NODE_SLOT_W = 150;   // horizontal slot per node (includes gap)
-const SPOUSE_SLOT_W = 110; // tighter slot for spouse next to "You"
+const NODE_GAP = 24;       // horizontal gap between nodes
 const LEVEL_GAP = 140;     // vertical gap between generations
 const PAD_X = 100;
 const PAD_Y = 70;
 
-const NODE_W = 116;  // rect width
 const NODE_H = 54;   // rect height
-const NODE_R = 27;   // circle / diamond radius
+const NODE_MIN_W = 100; // minimum rect width
+const NODE_CHAR_W = 7.5; // approx px per character for sizing
+const NODE_R = 27;   // circle / diamond radius (min)
 const YOU_EXTRA = 8; // extra size for the "You" node
+
+function measureNodeW(name: string, isYou?: boolean): number {
+  const label = isYou ? 'You' : name;
+  const textW = label.length * NODE_CHAR_W + 28; // padding
+  return Math.max(NODE_MIN_W, textW) + (isYou ? YOU_EXTRA : 0);
+}
+
+function measureNodeR(name: string, isYou?: boolean): number {
+  const base = Math.max(NODE_R, (name.length * 3.5) + 8);
+  return base + (isYou ? 4 : 0);
+}
 
 /* ─── Helpers ─── */
 
