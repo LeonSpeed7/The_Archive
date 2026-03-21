@@ -34,6 +34,7 @@ export function useConnections() {
           connected_user_id: otherId,
           connected_name: profile?.full_name || profile?.display_name || 'Unknown',
           connected_username: profile?.username || '',
+          relationship: (c as any).relationship || 'other',
         };
       });
     },
