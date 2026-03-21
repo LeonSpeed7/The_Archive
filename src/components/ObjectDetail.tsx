@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 interface Props {
   objectId: string;
   onBack: () => void;
+  source?: 'global' | 'personal';
 }
 
 interface TimelineEntry {
@@ -27,7 +28,8 @@ const TIMELINE_COLORS = [
   { bg: 'hsl(173 80% 40%)', light: 'hsl(173 80% 92%)' },
 ];
 
-export default function ObjectDetail({ objectId, onBack }: Props) {
+export default function ObjectDetail({ objectId, onBack, source = 'global' }: Props) {
+  const isPersonal = source === 'personal';
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [newStory, setNewStory] = useState('');
@@ -42,21 +44,23 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
   const [loadingEvolution, setLoadingEvolution] = useState(false);
 
   const { data: object } = useQuery({
-    queryKey: ['object', objectId],
+    queryKey: [isPersonal ? 'personal-object' : 'object', objectId],
     queryFn: async () => {
-      const { data, error } = await supabase.from('objects').select('*').eq('id', objectId).single();
+      const table = isPersonal ? 'personal_objects' : 'objects';
+      const { data, error } = await supabase.from(table).select('*').eq('id', objectId).single();
       if (error) throw error;
       return data;
     },
   });
 
   const { data: stories } = useQuery({
-    queryKey: ['stories', objectId],
+    queryKey: ['stories', objectId, source],
     queryFn: async () => {
+      const col = isPersonal ? 'personal_object_id' : 'object_id';
       const { data, error } = await supabase
         .from('stories')
         .select('*, profiles:user_id(display_name, full_name)')
-        .eq('object_id', objectId)
+        .eq(col, objectId)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data;
@@ -80,18 +84,23 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
 
   const addStory = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('stories').insert({
-        object_id: objectId,
+      const insertData: any = {
         user_id: user!.id,
         content: newStory,
         visibility: storyVisibility,
-      });
+      };
+      if (isPersonal) {
+        insertData.personal_object_id = objectId;
+      } else {
+        insertData.object_id = objectId;
+      }
+      const { error } = await supabase.from('stories').insert(insertData);
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success('Story added!');
       setNewStory('');
-      queryClient.invalidateQueries({ queryKey: ['stories', objectId] });
+      queryClient.invalidateQueries({ queryKey: ['stories', objectId, source] });
     },
     onError: (err: any) => toast.error(err.message),
   });
