@@ -8,11 +8,11 @@ import ProfileMenu from '@/components/ProfileMenu';
 
 type Tab = 'camera' | 'personal' | 'database' | 'tree';
 
-const tabs: { id: Tab; label: string; icon: typeof Camera; colorVar: string }[] = [
-  { id: 'camera', label: 'AI Camera', icon: Camera, colorVar: '--color-camera' },
-  { id: 'personal', label: 'My Archive', icon: BookLock, colorVar: '--color-nav' },
-  { id: 'database', label: 'Community Database', icon: Globe, colorVar: '--color-community' },
-  { id: 'tree', label: 'Family Tree', icon: TreePine, colorVar: '--color-tree' },
+const tabs: { id: Tab; label: string; icon: typeof Camera }[] = [
+  { id: 'camera', label: 'AI Camera', icon: Camera },
+  { id: 'personal', label: 'My Archive', icon: BookLock },
+  { id: 'database', label: 'Community Database', icon: Globe },
+  { id: 'tree', label: 'Family Tree', icon: TreePine },
 ];
 
 export default function Dashboard() {
@@ -21,7 +21,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border sticky top-0 z-50" style={{ backgroundColor: 'hsl(var(--color-nav))' }}>
+      <header className="border-b sticky top-0 z-50" style={{ backgroundColor: 'hsl(var(--teal-900))', borderColor: 'hsl(var(--teal-700) / 0.5)' }}>
         <div className="container flex items-center justify-between h-14">
           <h1 className="font-display text-xl font-semibold tracking-tight text-white">
             The Archive
@@ -31,7 +31,7 @@ export default function Dashboard() {
       </header>
 
       {/* Tab Navigation */}
-      <nav className="border-b border-border bg-card/60">
+      <nav className="border-b" style={{ borderColor: 'hsl(var(--teal-200))', backgroundColor: 'hsl(var(--teal-50))' }}>
         <div className="container flex gap-1 py-2 overflow-x-auto">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -45,11 +45,14 @@ export default function Dashboard() {
                   transition-all duration-[var(--duration-state)]
                   ${isActive
                     ? 'text-white shadow-md'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                    : 'hover:bg-[hsl(var(--teal-100))]'
                   }
                   active:scale-[0.97]
                 `}
-                style={isActive ? { backgroundColor: `hsl(var(${tab.colorVar}))`, boxShadow: `0 4px 12px hsl(var(${tab.colorVar}) / 0.25)` } : undefined}
+                style={isActive
+                  ? { backgroundColor: 'hsl(var(--teal-500))', boxShadow: '0 4px 12px hsl(var(--teal-500) / 0.25)' }
+                  : { color: 'hsl(var(--teal-700))' }
+                }
               >
                 <Icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{tab.label}</span>
