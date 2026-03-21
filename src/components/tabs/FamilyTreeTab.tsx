@@ -370,7 +370,26 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
 
   const handlePointerUp = useCallback(() => setDragging(false), []);
 
-  const toggleGen = (gen: number) => {
+  const handleZoomIn = useCallback(() => setZoom(z => Math.min(z + 0.15, 2.5)), []);
+  const handleZoomOut = useCallback(() => setZoom(z => Math.max(z - 0.15, 0.3)), []);
+  const handleFit = useCallback(() => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const sx = (rect.width - 16) / canvasW;
+    const sy = (rect.height - 16) / canvasH;
+    const s = Math.min(sx, sy, 1.15);
+    setPan({ x: (rect.width - canvasW * s) / 2, y: Math.max(8, (rect.height - canvasH * s) / 2) });
+    setZoom(s);
+  }, [canvasW, canvasH]);
+
+  // Block wheel zoom on the canvas
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const prevent = (e: WheelEvent) => e.preventDefault();
+    el.addEventListener('wheel', prevent, { passive: false });
+    return () => el.removeEventListener('wheel', prevent);
+  }, []);
     if (gen === 0) return;
     setCollapsedGens(prev => {
       const next = new Set(prev);
