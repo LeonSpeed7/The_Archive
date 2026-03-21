@@ -13,19 +13,22 @@ export default function FamilyTreeTab() {
   const queryClient = useQueryClient();
   const { data: connections = [], isLoading } = useConnections();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [memberName, setMemberName] = useState('');
   const [safeword, setSafeword] = useState('');
 
   const connect = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.rpc('connect_by_safeword', {
         p_safeword: safeword.trim(),
+        p_nickname: memberName.trim(),
       });
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      toast.success('Family member added!');
+      toast.success(`${memberName.trim() || 'Family member'} added!`);
       setSafeword('');
+      setMemberName('');
       setShowAddForm(false);
       queryClient.invalidateQueries({ queryKey: ['family-connections'] });
     },
