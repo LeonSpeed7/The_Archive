@@ -40,7 +40,7 @@ export default function LandingPage({ onGetStarted }: Props) {
       {/* Nav */}
       <header className="sticky top-0 z-50 backdrop-blur-md border-b" style={{ backgroundColor: 'hsl(var(--teal-900) / 0.95)', borderColor: 'hsl(var(--teal-700) / 0.5)' }}>
         <div className="container flex items-center justify-between h-14">
-          <h1 className="font-display text-xl font-semibold tracking-tight text-white">The Archive</h1>
+          <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="font-display text-xl font-semibold tracking-tight text-white hover:opacity-80 transition-opacity cursor-pointer">The Archive</button>
           <Button
             onClick={onGetStarted}
             size="sm"
