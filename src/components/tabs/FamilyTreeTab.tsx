@@ -479,19 +479,6 @@ export default function FamilyTreeTab() {
 
   const members = connections as any[];
 
-  // Check which connected users have contributed objects
-  const { data: objectCounts = {} } = useQuery({
-    queryKey: ['connected-object-counts', members.map((m: any) => m.connected_user_id)],
-    queryFn: async () => {
-      const ids = members.map((m: any) => m.connected_user_id);
-      if (ids.length === 0) return {};
-      const { data } = await supabase.from('objects').select('created_by').in('created_by', ids);
-      const counts: Record<string, number> = {};
-      data?.forEach(o => { if (o.created_by) counts[o.created_by] = (counts[o.created_by] || 0) + 1; });
-      return counts;
-    },
-    enabled: members.length > 0,
-  });
 
   const connect = useMutation({
     mutationFn: async () => {
@@ -616,7 +603,6 @@ export default function FamilyTreeTab() {
           myName={myName}
           myUsername={myUsername}
           myGender={myGender}
-          objectCounts={objectCounts as Record<string, number>}
         />
       )}
 
@@ -657,11 +643,6 @@ export default function FamilyTreeTab() {
                     >
                       {rel.label}
                     </span>
-                    {(objectCounts as Record<string, number>)[c.connected_user_id] > 0 && (
-                      <span className="text-[10px] font-medium text-primary flex items-center gap-0.5">
-                        <Package className="w-3 h-3" /> Objects
-                      </span>
-                    )}
                   </div>
                 </div>
                 <Button
