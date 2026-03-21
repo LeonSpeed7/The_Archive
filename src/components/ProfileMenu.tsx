@@ -263,7 +263,7 @@ function AccessibilityPanel({ profile, userId, onBack }: { profile: any; userId:
 }
 
 /* ─── Settings Panel ─── */
-function SettingsPanel({ profile, userId, onBack }: { profile: any; userId: string; onBack: () => void }) {
+function SettingsPanel({ profile, userId, email, onBack }: { profile: any; userId: string; email: string; onBack: () => void }) {
   const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [fullName, setFullName] = useState(profile.full_name || '');
