@@ -6,11 +6,11 @@
 
 @layer base {
   :root {
-    --background: 180 20% 97%;
-    --foreground: 210 29% 15%;
+    --background: 180 18% 97%;
+    --foreground: 218 35% 15%;
 
-    --card: 170 25% 94%;
-    --card-foreground: 210 29% 15%;
+    --card: 175 22% 95%;
+    --card-foreground: 218 35% 15%;
 
     --popover: 180 20% 97%;
     --popover-foreground: 210 29% 15%;
@@ -56,10 +56,10 @@
     /* Tab-specific accent colors */
     --color-camera: 187 100% 42%;
     --color-community: 168 45% 38%;
-    --color-tree: 210 29% 24%;
+    --color-tree: 215 40% 28%;
     --color-success: 145 50% 42%;
     --color-highlight: 48 87% 50%;
-    --color-nav: 210 29% 20%;
+    --color-nav: 220 45% 22%;
 
     /* Teal palette tokens */
     --teal-50: 170 40% 96%;
@@ -69,9 +69,9 @@
     --teal-400: 168 45% 50%;
     --teal-500: 168 45% 38%;
     --teal-600: 168 50% 30%;
-    --teal-700: 210 29% 24%;
-    --teal-800: 210 29% 18%;
-    --teal-900: 210 29% 14%;
+    --teal-700: 215 40% 28%;
+    --teal-800: 218 42% 20%;
+    --teal-900: 220 45% 16%;
     --teal-cta: 187 100% 42%;
   }
 }

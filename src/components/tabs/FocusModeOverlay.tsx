@@ -210,7 +210,7 @@ export default function FocusModeOverlay({ item, onClose }: FocusModeOverlayProp
         {/* History section */}
         <div className="px-6 py-4 space-y-2">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <History className="w-4 h-4" style={{ color: 'hsl(262 50% 55%)' }} />
+            <History className="w-4 h-4" style={{ color: 'hsl(215 50% 50%)' }} />
             Historical Background
           </div>
           {isLoadingHistory ? (
@@ -230,7 +230,7 @@ export default function FocusModeOverlay({ item, onClose }: FocusModeOverlayProp
         {/* Personal/family connections */}
         <div className="px-6 py-4 space-y-2">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <Users className="w-4 h-4" style={{ color: 'hsl(262 50% 55%)' }} />
+            <Users className="w-4 h-4" style={{ color: 'hsl(215 50% 50%)' }} />
             Personal & Family
           </div>
           {isLoadingConnections ? (
@@ -242,7 +242,7 @@ export default function FocusModeOverlay({ item, onClose }: FocusModeOverlayProp
             <div className="space-y-1.5">
               {familyConnections.map((c, i) => (
                 <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'hsl(262 50% 55%)' }} />
+                  <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'hsl(215 50% 50%)' }} />
                   {c}
                 </div>
               ))}
@@ -257,7 +257,7 @@ export default function FocusModeOverlay({ item, onClose }: FocusModeOverlayProp
         {/* Community stories */}
         <div className="px-6 py-4 pb-8 space-y-2">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <MessageSquare className="w-4 h-4" style={{ color: 'hsl(262 50% 55%)' }} />
+            <MessageSquare className="w-4 h-4" style={{ color: 'hsl(215 50% 50%)' }} />
             Community Stories
           </div>
           {isLoadingStories ? (

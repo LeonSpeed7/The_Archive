@@ -69,7 +69,7 @@ export default function Dashboard() {
       </nav>
 
       {/* Tab Content */}
-      <main className="container py-8">
+      <main className="container py-8" style={{ minHeight: 'calc(100vh - 7.5rem)' }}>
         <div className="animate-fade-in" key={activeTab}>
           {activeTab === 'camera' && <ARCameraTab />}
           {activeTab === 'livesense' && <LiveSenseTab />}
