@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Archive, Users, ArrowLeft, Sparkles, Loader2, Calendar, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
+import { Search, Archive, Users, ArrowLeft, Sparkles, Loader2, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import ObjectDetail from '@/components/ObjectDetail';
@@ -19,12 +19,12 @@ interface EvolutionTimeline {
 }
 
 const TIMELINE_COLORS = [
-  { bg: 'hsl(28 80% 52%)', light: 'hsl(28 80% 95%)', text: 'hsl(28 80% 30%)' },
-  { bg: 'hsl(168 45% 43%)', light: 'hsl(168 45% 93%)', text: 'hsl(168 45% 25%)' },
-  { bg: 'hsl(210 18% 30%)', light: 'hsl(210 18% 92%)', text: 'hsl(210 18% 18%)' },
-  { bg: 'hsl(48 87% 50%)', light: 'hsl(48 87% 93%)', text: 'hsl(48 87% 30%)' },
-  { bg: 'hsl(145 50% 42%)', light: 'hsl(145 50% 93%)', text: 'hsl(145 50% 25%)' },
-  { bg: 'hsl(187 100% 42%)', light: 'hsl(187 100% 92%)', text: 'hsl(187 100% 22%)' },
+  { bg: 'hsl(var(--teal-400))', light: 'hsl(var(--teal-100))' },
+  { bg: 'hsl(var(--teal-cta))', light: 'hsl(var(--teal-50))' },
+  { bg: 'hsl(var(--teal-600))', light: 'hsl(var(--teal-100))' },
+  { bg: 'hsl(var(--color-highlight))', light: 'hsl(48 87% 93%)' },
+  { bg: 'hsl(var(--color-success))', light: 'hsl(145 50% 93%)' },
+  { bg: 'hsl(var(--teal-700))', light: 'hsl(var(--teal-100))' },
 ];
 
 export default function GlobalDatabaseTab() {
@@ -47,7 +47,6 @@ export default function GlobalDatabaseTab() {
     },
   });
 
-  // User's own personal objects
   const { data: myPersonalObjects } = useQuery({
     queryKey: ['my-personal-objects-community', search, user?.id],
     queryFn: async () => {
@@ -60,7 +59,6 @@ export default function GlobalDatabaseTab() {
     enabled: !!user,
   });
 
-  // Connected family members' personal objects
   const { data: connectedObjects } = useQuery({
     queryKey: ['connected-objects', search, user?.id],
     queryFn: async () => {
@@ -93,7 +91,6 @@ export default function GlobalDatabaseTab() {
     return <ObjectDetail objectId={selectedObjectId} source={selectedSource} onBack={() => { setSelectedObjectId(null); setSelectedSource('global'); }} />;
   }
 
-  // Evolution timeline view
   if (evolutionView) {
     return (
       <div className="max-w-3xl mx-auto space-y-8">
@@ -109,7 +106,6 @@ export default function GlobalDatabaseTab() {
           <p className="text-muted-foreground mt-1">AI-generated evolution timeline</p>
         </div>
 
-        {/* Horizontal evolution timeline */}
         <div className="animate-reveal-up stagger-1 relative">
           <div className="flex gap-2 mb-3 justify-end">
             <Button variant="outline" size="icon" className="w-8 h-8" onClick={() => scroll('left')}>
@@ -121,7 +117,7 @@ export default function GlobalDatabaseTab() {
           </div>
 
           <div className="relative overflow-hidden">
-            <div ref={scrollRef} className="flex gap-0 overflow-x-auto pb-4 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+            <div ref={scrollRef} className="flex gap-0 overflow-x-auto pb-4" style={{ scrollbarWidth: 'none' }}>
               {evolutionView.entries.map((entry, i) => {
                 const color = TIMELINE_COLORS[i % TIMELINE_COLORS.length];
                 const isLast = i === evolutionView.entries.length - 1;
@@ -149,7 +145,6 @@ export default function GlobalDatabaseTab() {
     );
   }
 
-  // Main archive
   const allTimelineObjects = [
     ...(objects?.map(o => ({ ...o, _source: 'global' as const })) ?? []),
     ...(myPersonalObjects?.map(o => ({ ...o, _source: 'mine' as const })) ?? []),
@@ -159,31 +154,30 @@ export default function GlobalDatabaseTab() {
   const uniqueNames = [...new Set(objects?.map(o => o.name) ?? [])];
 
   return (
-    <div className="relative -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-10 min-h-[60vh] space-y-10 rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, hsl(210 29% 18%), hsl(210 18% 22%), hsl(210 29% 16%))' }}>
-      {/* Grid overlay */}
+    <div className="relative -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-10 min-h-[60vh] space-y-10 rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, hsl(var(--teal-900)), hsl(var(--teal-800)), hsl(var(--teal-900)))' }}>
+      {/* Subtle grid */}
       <div
-        className="absolute inset-0 opacity-[0.04] pointer-events-none"
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
         style={{
-          backgroundImage: `linear-gradient(hsl(var(--color-community)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--color-community)) 1px, transparent 1px)`,
+          backgroundImage: `linear-gradient(hsl(var(--teal-400)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--teal-400)) 1px, transparent 1px)`,
           backgroundSize: '40px 40px',
         }}
       />
-      {/* Radial glow */}
-      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 40%, hsl(28 80% 52% / 0.08) 0%, transparent 60%)' }} />
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 40%, hsl(var(--teal-cta) / 0.08) 0%, transparent 60%)' }} />
 
       <div className="relative z-10 max-w-2xl mx-auto animate-reveal-up">
         <h2 className="font-display text-2xl font-semibold text-white">
-          Community <span style={{ color: 'hsl(28 80% 52%)' }}>Archive</span>
+          Community <span style={{ color: 'hsl(var(--teal-cta))' }}>Archive</span>
         </h2>
         <p className="text-white/70 mt-1">Community timeline of archived objects — sorted by date uploaded</p>
       </div>
 
-      <div className="relative z-10 max-w-2xl mx-auto animate-reveal-up stagger-1 relative">
+      <div className="relative z-10 max-w-2xl mx-auto animate-reveal-up stagger-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
         <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search the archive..." className="pl-10 bg-white/[0.08] border-white/20 text-white placeholder:text-white/40 focus-visible:ring-white/30" />
       </div>
 
-      {/* Horizontal Timeline */}
+      {/* Timeline */}
       <div className="relative z-10 animate-reveal-up stagger-2">
         {isLoading && <p className="text-white/70 text-center py-8">Loading archive...</p>}
 
@@ -212,7 +206,6 @@ export default function GlobalDatabaseTab() {
                 const isLast = i === allTimelineObjects.length - 1;
                 const uploadDate = new Date(obj.created_at);
                 const estimatedOrigin = (obj as any).estimated_origin;
-                const isCenterItem = allTimelineObjects.length > 2 && i === Math.floor(allTimelineObjects.length / 2);
 
                 return (
                   <button
@@ -229,40 +222,34 @@ export default function GlobalDatabaseTab() {
                     </p>
 
                     <div className="flex items-center w-full">
-                      <div className="flex-1 h-px" style={{ backgroundColor: i === 0 ? 'transparent' : 'hsl(200 30% 40% / 0.3)' }} />
+                      <div className="flex-1 h-px" style={{ backgroundColor: i === 0 ? 'transparent' : 'hsl(var(--teal-400) / 0.25)' }} />
                       <div
                         className="w-4 h-4 rounded-full flex-shrink-0 transition-all duration-300 group-hover:scale-125 border-2"
                         style={{
                           backgroundColor: color.bg,
-                          borderColor: 'hsl(200 60% 70% / 0.4)',
-                          boxShadow: isCenterItem ? `0 0 14px ${color.bg}60` : `0 0 6px ${color.bg}30`,
+                          borderColor: 'hsl(var(--teal-300) / 0.4)',
+                          boxShadow: `0 0 6px ${color.bg}30`,
                         }}
                       />
-                      <div className="flex-1 h-px" style={{ backgroundColor: isLast ? 'transparent' : 'hsl(200 30% 40% / 0.3)' }} />
+                      <div className="flex-1 h-px" style={{ backgroundColor: isLast ? 'transparent' : 'hsl(var(--teal-400) / 0.25)' }} />
                     </div>
 
                     <div
-                      className={`mt-4 w-[200px] rounded-xl border px-4 py-3 text-left transition-all duration-300 backdrop-blur-sm group-hover:-translate-y-1 ${
-                        isCenterItem
-                          ? 'shadow-lg shadow-black/30 border-2 scale-105'
-                          : 'group-hover:shadow-md group-hover:shadow-black/20'
-                      }`}
+                      className="mt-4 w-[200px] rounded-xl border px-4 py-3 text-left transition-all duration-300 backdrop-blur-sm group-hover:-translate-y-1 group-hover:shadow-md group-hover:shadow-black/20"
                       style={{
-                        borderColor: isCenterItem ? color.bg + '80' : 'hsl(200 20% 30% / 0.4)',
-                        backgroundColor: isCenterItem ? color.bg + '18' : 'hsl(220 18% 18% / 0.7)',
+                        borderColor: 'hsl(var(--teal-600) / 0.3)',
+                        backgroundColor: 'hsl(var(--teal-800) / 0.7)',
                       }}
                     >
                       {obj.image_url && (
                         <img src={obj.image_url} alt={obj.name} className="w-full h-24 object-cover rounded-lg mb-2 opacity-90" />
                       )}
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <h4 className={`font-display text-sm font-semibold leading-tight truncate transition-colors ${
-                          isCenterItem ? 'text-white' : 'text-white/90 group-hover:text-white'
-                        }`}>
+                        <h4 className="font-display text-sm font-semibold leading-tight truncate transition-colors text-white/90 group-hover:text-white">
                           {obj.name}
                         </h4>
                         {obj._source === 'connected' && (
-                          <Users className="w-3 h-3 flex-shrink-0" style={{ color: 'hsl(var(--color-community))' }} />
+                          <Users className="w-3 h-3 flex-shrink-0" style={{ color: 'hsl(var(--teal-cta))' }} />
                         )}
                         {obj._source === 'mine' && (
                           <Lock className="w-3 h-3 flex-shrink-0" style={{ color: 'hsl(var(--color-success))' }} />
@@ -290,7 +277,7 @@ export default function GlobalDatabaseTab() {
         <div className="relative z-10 max-w-2xl mx-auto animate-reveal-up stagger-3 space-y-4 pt-6 border-t border-white/10">
           <div>
             <h3 className="font-display text-lg font-semibold text-white">
-              Explore <span style={{ color: 'hsl(28 80% 52%)' }}>Evolutions</span>
+              Explore <span style={{ color: 'hsl(var(--teal-cta))' }}>Evolutions</span>
             </h3>
             <p className="text-sm text-white/60 mt-1">
               Tap any object to see how it evolved over history

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AuthPage() {
@@ -46,19 +47,19 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(180deg, hsl(var(--teal-50)) 0%, hsl(var(--background)) 60%)' }}>
       <div className="w-full max-w-md">
         <div className="animate-reveal-up text-center mb-10">
-          <h1 className="font-display text-4xl font-bold text-foreground tracking-tight leading-[1.1]">
+          <h1 className="font-display text-4xl font-bold tracking-tight leading-[1.1]" style={{ color: 'hsl(var(--teal-900))' }}>
             The Archive
           </h1>
-          <p className="mt-3 text-muted-foreground text-lg">
+          <p className="mt-3 text-lg" style={{ color: 'hsl(var(--muted-foreground))' }}>
             Preserve your stories. Connect your past.
           </p>
         </div>
 
-        <div className="animate-reveal-up stagger-2 bg-card rounded-xl border border-border p-8 shadow-lg shadow-foreground/5">
-          <h2 className="font-display text-xl font-semibold text-foreground mb-6">
+        <div className="animate-reveal-up stagger-2 rounded-xl border p-8 shadow-lg" style={{ backgroundColor: 'hsl(var(--teal-50))', borderColor: 'hsl(var(--teal-200))', boxShadow: '0 8px 32px hsl(var(--teal-900) / 0.06)' }}>
+          <h2 className="font-display text-xl font-semibold mb-6" style={{ color: 'hsl(var(--teal-900))' }}>
             {isLogin ? 'Welcome back' : 'Create your account'}
           </h2>
 
@@ -66,7 +67,7 @@ export default function AuthPage() {
             {!isLogin && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: 'hsl(var(--foreground))' }}>
                     Full Name <span className="text-destructive">*</span>
                   </label>
                   <Input
@@ -79,7 +80,7 @@ export default function AuthPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1.5">
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: 'hsl(var(--foreground))' }}>
                     Username <span className="text-destructive">*</span>
                   </label>
                   <Input
@@ -91,14 +92,14 @@ export default function AuthPage() {
                     maxLength={30}
                     className="bg-background font-mono"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>
                     Others will use this to add you as a family member
                   </p>
                 </div>
               </>
             )}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'hsl(var(--foreground))' }}>
                 Email <span className="text-destructive">*</span>
               </label>
               <Input
@@ -111,7 +112,7 @@ export default function AuthPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'hsl(var(--foreground))' }}>
                 Password <span className="text-destructive">*</span>
               </label>
               <Input
@@ -126,8 +127,9 @@ export default function AuthPage() {
             </div>
             <Button
               type="submit"
-              className="w-full mt-2"
+              className="w-full mt-2 text-white"
               disabled={loading}
+              style={{ backgroundColor: 'hsl(var(--teal-cta))' }}
             >
               {loading ? 'Please wait...' : isLogin ? 'Sign in' : 'Create account'}
             </Button>
@@ -136,7 +138,8 @@ export default function AuthPage() {
           <div className="mt-6 text-center">
             <button
               onClick={() => setIsLogin(!isLogin)}
-              className="text-sm text-muted-foreground hover:text-primary transition-colors duration-[var(--duration-state)]"
+              className="text-sm transition-colors duration-[var(--duration-state)]"
+              style={{ color: 'hsl(var(--teal-500))' }}
             >
               {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
             </button>

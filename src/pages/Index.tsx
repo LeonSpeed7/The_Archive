@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import AuthPage from '@/components/AuthPage';
 import Dashboard from '@/components/Dashboard';
+import LandingPage from '@/components/LandingPage';
 
 export default function Index() {
   const { user, loading } = useAuth();
+  const [showAuth, setShowAuth] = useState(false);
 
   if (loading) {
     return (
@@ -13,5 +16,7 @@ export default function Index() {
     );
   }
 
-  return user ? <Dashboard /> : <AuthPage />;
+  if (user) return <Dashboard />;
+  if (showAuth) return <AuthPage />;
+  return <LandingPage onGetStarted={() => setShowAuth(true)} />;
 }
