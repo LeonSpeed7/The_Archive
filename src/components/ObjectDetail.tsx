@@ -32,8 +32,6 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
   const isPersonal = source === 'personal';
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [newStory, setNewStory] = useState('');
-  const [storyVisibility, setStoryVisibility] = useState<'global' | 'family'>('global');
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -81,29 +79,6 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
         .finally(() => setLoadingEvolution(false));
     }
   }, [object?.name]);
-
-  const addStory = useMutation({
-    mutationFn: async () => {
-      const insertData: any = {
-        user_id: user!.id,
-        content: newStory,
-        visibility: storyVisibility,
-      };
-      if (isPersonal) {
-        insertData.personal_object_id = objectId;
-      } else {
-        insertData.object_id = objectId;
-      }
-      const { error } = await supabase.from('stories').insert(insertData);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success('Story added!');
-      setNewStory('');
-      queryClient.invalidateQueries({ queryKey: ['stories', objectId, source] });
-    },
-    onError: (err: any) => toast.error(err.message),
-  });
 
   const playNarration = async () => {
     if (isPlaying && audioRef.current) {
