@@ -17,21 +17,24 @@ export function useConnections() {
         .select('*')
         .or(`requester_id.eq.${user!.id},target_id.eq.${user!.id}`);
       if (error) throw error;
-      // Get connected user IDs
       const connectedIds = data.map(c =>
         c.requester_id === user!.id ? c.target_id : c.requester_id
       );
       if (connectedIds.length === 0) return [];
-      // Fetch their profiles
       const { data: profiles, error: pErr } = await supabase
         .from('profiles')
-        .select('user_id, display_name')
+        .select('user_id, display_name, full_name, username')
         .in('user_id', connectedIds);
       if (pErr) throw pErr;
       return data.map(c => {
         const otherId = c.requester_id === user!.id ? c.target_id : c.requester_id;
         const profile = profiles?.find(p => p.user_id === otherId);
-        return { ...c, connected_user_id: otherId, connected_name: profile?.display_name || 'Unknown' };
+        return {
+          ...c,
+          connected_user_id: otherId,
+          connected_name: profile?.full_name || profile?.display_name || 'Unknown',
+          connected_username: profile?.username || '',
+        };
       });
     },
     enabled: !!user,
@@ -43,12 +46,14 @@ export default function FamilyConnections() {
   const queryClient = useQueryClient();
   const { data: connections = [] } = useConnections();
   const [safeword, setSafeword] = useState('');
+  const [username, setUsername] = useState('');
   const [showForm, setShowForm] = useState(false);
 
   const connect = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.rpc('connect_by_safeword', {
         p_safeword: safeword.trim(),
+        p_username: username.trim().toLowerCase(),
       });
       if (error) throw error;
       return data;
@@ -56,6 +61,7 @@ export default function FamilyConnections() {
     onSuccess: () => {
       toast.success('Family member connected!');
       setSafeword('');
+      setUsername('');
       setShowForm(false);
       queryClient.invalidateQueries({ queryKey: ['family-connections'] });
     },
@@ -90,18 +96,24 @@ export default function FamilyConnections() {
       {showForm && (
         <div className="bg-card border border-border rounded-lg p-4 space-y-3">
           <p className="text-sm text-muted-foreground">
-            Enter a family member's safeword to connect. Both of you will see each other's archived objects in search results.
+            Enter a family member's username and safeword to connect.
           </p>
+          <Input
+            value={username}
+            onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+            placeholder="Their username"
+            className="bg-background font-mono"
+          />
           <div className="flex gap-2">
             <Input
               value={safeword}
               onChange={(e) => setSafeword(e.target.value)}
-              placeholder="Enter their safeword…"
+              placeholder="Their safeword"
               className="bg-background"
             />
             <Button
               onClick={() => connect.mutate()}
-              disabled={!safeword.trim() || connect.isPending}
+              disabled={!safeword.trim() || !username.trim() || connect.isPending}
             >
               {connect.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Connect'}
             </Button>
@@ -115,7 +127,7 @@ export default function FamilyConnections() {
             <div key={c.id} className="flex items-center justify-between bg-card border border-border rounded-lg px-4 py-3">
               <div>
                 <p className="text-sm font-medium text-foreground">{c.connected_name}</p>
-                <p className="text-xs text-muted-foreground">Connected family member</p>
+                <p className="text-xs text-muted-foreground">@{c.connected_username} · Connected family member</p>
               </div>
               <Button
                 variant="ghost"
@@ -131,7 +143,7 @@ export default function FamilyConnections() {
       )}
 
       {connections.length === 0 && !showForm && (
-        <p className="text-sm text-muted-foreground">No family connections yet. Connect to share archived objects in search results.</p>
+        <p className="text-sm text-muted-foreground">No family connections yet.</p>
       )}
     </div>
   );
