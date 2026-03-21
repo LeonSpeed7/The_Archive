@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Archive, Users, ArrowLeft, Sparkles, Loader2, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Archive, Users, ArrowLeft, Sparkles, Loader2, Calendar, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import ObjectDetail from '@/components/ObjectDetail';
