@@ -140,8 +140,9 @@ export default function FamilyTreeTab() {
             nodes: {
               ...prev.nodes,
               [connecting]: { x: existing.x, y: existing.y, parentId: nodeId },
-          },
-        }));
+            },
+          };
+        });
       }
       setConnecting(null);
       return;
