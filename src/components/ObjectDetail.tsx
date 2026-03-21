@@ -568,7 +568,7 @@ function VisibilityToggle({
             : 'bg-card text-muted-foreground hover:text-foreground'
         }`}
       >
-        <Globe className="w-3 h-3" /> Everyone
+        <Globe className="w-3 h-3" /> Community
       </button>
       <button
         type="button"

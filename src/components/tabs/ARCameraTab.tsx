@@ -392,7 +392,7 @@ export default function ARCameraTab() {
             </div>
             <div className="flex gap-2">
               <Button onClick={() => saveToDatabase.mutate()} disabled={saveToDatabase.isPending} className="flex-1">
-                {saveToDatabase.isPending ? 'Saving...' : `Save to ${archiveTarget === 'global' ? 'Global' : 'Personal'} Archive`}
+                {saveToDatabase.isPending ? 'Saving...' : `Save to ${archiveTarget === 'global' ? 'Community' : 'Personal'} Archive`}
               </Button>
               <Button variant="outline" onClick={resetAll}>
                 Start Over
