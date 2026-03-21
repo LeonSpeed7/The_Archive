@@ -138,14 +138,16 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
       return;
     }
 
-    if (!object?.history) {
-      toast.error('No history available to narrate');
+    // Build narration from all available text
+    const parts = [object?.name, object?.description, object?.history].filter(Boolean);
+    if (parts.length === 0) {
+      toast.error('No content available to narrate');
       return;
     }
 
     setIsLoadingAudio(true);
     try {
-      const narrationText = `${object.name}. ${object.description || ''} ${object.history}`;
+      const narrationText = parts.join('. ');
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/text-to-speech`,
         {
@@ -158,7 +160,11 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
           body: JSON.stringify({ text: narrationText }),
         }
       );
-      if (!response.ok) throw new Error('TTS request failed');
+      if (!response.ok) {
+        const errBody = await response.text();
+        console.error('TTS response:', response.status, errBody);
+        throw new Error(`TTS request failed: ${response.status}`);
+      }
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
@@ -224,12 +230,10 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
               onDeleted={onBack}
             />
           )}
-          {object.history && (
-            <Button variant="outline" size="sm" onClick={playNarration} disabled={isLoadingAudio} className="gap-1.5">
-              {isLoadingAudio ? <Loader2 className="w-4 h-4 animate-spin" /> : isPlaying ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-              {isLoadingAudio ? 'Loading…' : isPlaying ? 'Stop' : 'Listen'}
-            </Button>
-          )}
+          <Button variant="outline" size="sm" onClick={playNarration} disabled={isLoadingAudio} className="gap-1.5">
+            {isLoadingAudio ? <Loader2 className="w-4 h-4 animate-spin" /> : isPlaying ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            {isLoadingAudio ? 'Loading…' : isPlaying ? 'Stop' : 'Listen'}
+          </Button>
         </div>
       </div>
 
