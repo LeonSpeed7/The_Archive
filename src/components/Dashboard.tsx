@@ -6,6 +6,7 @@ import ARCameraTab from '@/components/tabs/ARCameraTab';
 import GlobalDatabaseTab from '@/components/tabs/GlobalDatabaseTab';
 import PersonalDatabaseTab from '@/components/tabs/PersonalDatabaseTab';
 import FamilyTreeTab from '@/components/tabs/FamilyTreeTab';
+import SafewordSetup, { useSafeword, SafewordDisplay } from '@/components/SafewordSetup';
 
 type Tab = 'camera' | 'personal' | 'database' | 'tree';
 
@@ -18,6 +19,7 @@ const tabs: { id: Tab; label: string; icon: typeof Camera }[] = [
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
+  const { data: safeword, isLoading: safewordLoading } = useSafeword();
   const [activeTab, setActiveTab] = useState<Tab>('camera');
 
   return (
@@ -74,7 +76,19 @@ export default function Dashboard() {
       </nav>
 
       {/* Tab Content */}
-      <main className="container py-8">
+      <main className="container py-8 space-y-6">
+        {/* Safeword setup banner */}
+        {!safewordLoading && !safeword && (
+          <div className="animate-reveal-up">
+            <SafewordSetup />
+          </div>
+        )}
+        {!safewordLoading && safeword && (
+          <div className="animate-reveal-up">
+            <SafewordDisplay />
+          </div>
+        )}
+
         <div className="animate-fade-in" key={activeTab}>
           {activeTab === 'camera' && <ARCameraTab />}
           {activeTab === 'personal' && <PersonalDatabaseTab />}
