@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { Plus, Unlink, Loader2, TreePine, ZoomIn, ZoomOut, Maximize2, ChevronDown, ChevronRight, Package } from 'lucide-react';
+import { Plus, Unlink, Loader2, TreePine, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -61,7 +61,7 @@ function initials(n: string) { return n.split(' ').map(w => w[0]).join('').toUpp
 
 interface TNode {
   id: string; name: string; username: string; gender: string;
-  relationship: string; generation: number; hasObjects?: boolean; isYou?: boolean;
+  relationship: string; generation: number; isYou?: boolean;
   userId?: string;
 }
 
@@ -69,7 +69,7 @@ interface NPos { x: number; y: number; node: TNode; }
 
 /* ─── Layout ─── */
 
-function computeLayout(members: any[], myName: string, myUsername: string, myGender: string, objectCounts: Record<string, number>) {
+function computeLayout(members: any[], myName: string, myUsername: string, myGender: string) {
   const nodes: TNode[] = [
     { id: 'you', name: myName, username: myUsername, gender: myGender, relationship: 'self', generation: 0, isYou: true },
     ...members.map((m: any) => ({
@@ -79,7 +79,6 @@ function computeLayout(members: any[], myName: string, myUsername: string, myGen
       gender: m.connected_gender || 'prefer_not_to_say',
       relationship: m.relationship || 'other',
       generation: GENERATION_MAP[m.relationship] ?? 0,
-      hasObjects: (objectCounts[m.connected_user_id] || 0) > 0,
       userId: m.connected_user_id,
     })),
   ];
@@ -169,25 +168,14 @@ function NodeShape({ x, y, node, onClick }: { x: number; y: number; node: TNode;
         </text>
       )}
 
-      {/* Objects badge */}
-      {node.hasObjects && (
-        <g>
-          <circle cx={x + r * 0.9} cy={y - r * 0.7} r={8} fill="hsl(var(--primary))" />
-          <text x={x + r * 0.9} y={y - r * 0.7 + 1} textAnchor="middle" dominantBaseline="central"
-            fill="hsl(var(--primary-foreground))" fontSize="8" fontWeight="700"
-          >
-            ✦
-          </text>
-        </g>
-      )}
     </g>
   );
 }
 
 /* ─── Interactive Tree Canvas ─── */
 
-function InteractiveTree({ members, myName, myUsername, myGender, objectCounts }: {
-  members: any[]; myName: string; myUsername: string; myGender: string; objectCounts: Record<string, number>;
+function InteractiveTree({ members, myName, myUsername, myGender }: {
+  members: any[]; myName: string; myUsername: string; myGender: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -196,7 +184,7 @@ function InteractiveTree({ members, myName, myUsername, myGender, objectCounts }
   const dragRef = useRef({ startX: 0, startY: 0, panX: 0, panY: 0 });
   const [collapsedGens, setCollapsedGens] = useState<Set<number>>(new Set());
 
-  const { positions, canvasW, canvasH, sortedGens } = computeLayout(members, myName, myUsername, myGender, objectCounts);
+  const { positions, canvasW, canvasH, sortedGens } = computeLayout(members, myName, myUsername, myGender);
 
   // Fit to container on mount / data change
   useEffect(() => {
@@ -381,21 +369,7 @@ function InteractiveTree({ members, myName, myUsername, myGender, objectCounts }
           </svg>
         </div>
 
-        {/* Zoom controls */}
-        <div className="absolute top-3 right-3 flex flex-col gap-1.5 z-10">
-          <Button size="icon" variant="outline" className="w-8 h-8 bg-card/80 backdrop-blur-sm"
-            onClick={() => setZoom(z => Math.min(3, z * 1.25))}>
-            <ZoomIn className="w-3.5 h-3.5" />
-          </Button>
-          <Button size="icon" variant="outline" className="w-8 h-8 bg-card/80 backdrop-blur-sm"
-            onClick={() => setZoom(z => Math.max(0.25, z * 0.8))}>
-            <ZoomOut className="w-3.5 h-3.5" />
-          </Button>
-          <Button size="icon" variant="outline" className="w-8 h-8 bg-card/80 backdrop-blur-sm"
-            onClick={resetView}>
-            <Maximize2 className="w-3.5 h-3.5" />
-          </Button>
-        </div>
+        {/* No zoom controls */}
 
         {/* Generation collapse toggles */}
         {sortedGens.length > 1 && (
@@ -415,7 +389,7 @@ function InteractiveTree({ members, myName, myUsername, myGender, objectCounts }
 
         {/* Drag hint */}
         <p className="absolute top-3 left-3 text-[10px] text-muted-foreground/50 pointer-events-none select-none">
-          Drag to pan · Scroll to zoom
+          Drag to pan
         </p>
       </div>
 
@@ -471,14 +445,6 @@ function InteractiveTree({ members, myName, myUsername, myGender, objectCounts }
                 <span className="text-[10px] font-medium text-foreground">{cfg.label}</span>
               </div>
             ))}
-            {/* Objects badge */}
-            <div className="flex items-center gap-1.5">
-              <svg width="18" height="18" viewBox="0 0 18 18" className="flex-shrink-0">
-                <circle cx="9" cy="9" r="6" fill="hsl(var(--primary))" />
-                <text x="9" y="10" textAnchor="middle" dominantBaseline="central" fill="hsl(var(--primary-foreground))" fontSize="7" fontWeight="700">✦</text>
-              </svg>
-              <span className="text-[10px] font-medium text-foreground">Has Objects</span>
-            </div>
           </div>
         </div>
       </div>
