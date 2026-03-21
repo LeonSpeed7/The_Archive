@@ -184,7 +184,7 @@ function VisibilityColumn({
   items: any[];
   sortKey: SortKey;
   onSortChange: (key: SortKey) => void;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, obj: any) => void;
   onDelete: (id: string) => void;
   onToggleVisibility: (id: string, vis: string) => void;
   toggleLabel: string;
