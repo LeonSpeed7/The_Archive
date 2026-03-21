@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Clock, Users, Volume2, Loader2, VolumeX } from 'lucide-react';
+import { ArrowLeft, Clock, Users, Volume2, Loader2, VolumeX, Globe, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
@@ -16,6 +16,7 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [newStory, setNewStory] = useState('');
+  const [storyVisibility, setStoryVisibility] = useState<'global' | 'family'>('global');
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -34,7 +35,7 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('stories')
-        .select('*, profiles:user_id(display_name)')
+        .select('*, profiles:user_id(display_name, full_name)')
         .eq('object_id', objectId)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -48,6 +49,7 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
         object_id: objectId,
         user_id: user!.id,
         content: newStory,
+        visibility: storyVisibility,
       });
       if (error) throw error;
     },
@@ -125,7 +127,6 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
 
-        {/* TTS Button */}
         {object.history && (
           <Button
             variant="outline"
@@ -173,21 +174,37 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
         <div className="flex items-center gap-2">
           <Users className="w-4 h-4 text-accent" />
           <h3 className="font-display text-lg font-semibold text-foreground">
-            Community Stories ({stories?.length ?? 0})
+            Stories ({stories?.length ?? 0})
           </h3>
         </div>
 
-        {stories?.map((story) => (
-          <div key={story.id} className="bg-card border border-border rounded-lg p-4">
-            <p className="text-foreground/90 leading-relaxed">{story.content}</p>
-            <p className="text-xs text-muted-foreground mt-2">
-              by {(story.profiles as any)?.display_name ?? 'Anonymous'} · {new Date(story.created_at).toLocaleDateString()}
-            </p>
-          </div>
-        ))}
+        {stories?.map((story) => {
+          const authorName = (story.profiles as any)?.full_name || (story.profiles as any)?.display_name || 'Anonymous';
+          const vis = (story as any).visibility;
+          return (
+            <div key={story.id} className="bg-card border border-border rounded-lg p-4">
+              <p className="text-foreground/90 leading-relaxed">{story.content}</p>
+              <div className="flex items-center gap-2 mt-2">
+                <p className="text-xs text-muted-foreground">
+                  by {authorName} · {new Date(story.created_at).toLocaleDateString()}
+                </p>
+                {vis === 'family' ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] bg-accent/15 text-accent px-1.5 py-0.5 rounded-full">
+                    <Lock className="w-2.5 h-2.5" /> Family only
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                    <Globe className="w-2.5 h-2.5" /> Public
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
 
+        {/* Add story form */}
         <div className="bg-card border border-border rounded-xl p-5">
-          <h4 className="text-sm font-medium text-foreground mb-2">Share your story</h4>
+          <h4 className="text-sm font-medium text-foreground mb-3">Share your story</h4>
           <Textarea
             value={newStory}
             onChange={(e) => setNewStory(e.target.value)}
@@ -195,6 +212,38 @@ export default function ObjectDetail({ objectId, onBack }: Props) {
             className="bg-background mb-3"
             rows={3}
           />
+
+          {/* Visibility toggle */}
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-xs text-muted-foreground">Who can see this?</span>
+            <div className="flex rounded-lg border border-border overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setStoryVisibility('global')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
+                  storyVisibility === 'global'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-card text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Globe className="w-3 h-3" />
+                Everyone
+              </button>
+              <button
+                type="button"
+                onClick={() => setStoryVisibility('family')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors border-l border-border ${
+                  storyVisibility === 'family'
+                    ? 'bg-accent text-accent-foreground'
+                    : 'bg-card text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Lock className="w-3 h-3" />
+                Family only
+              </button>
+            </div>
+          </div>
+
           <Button
             onClick={() => addStory.mutate()}
             disabled={!newStory.trim() || addStory.isPending}

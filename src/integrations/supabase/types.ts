@@ -323,6 +323,7 @@ export type Database = {
           id: string
           object_id: string
           user_id: string
+          visibility: string
         }
         Insert: {
           content: string
@@ -330,6 +331,7 @@ export type Database = {
           id?: string
           object_id: string
           user_id: string
+          visibility?: string
         }
         Update: {
           content?: string
@@ -337,6 +339,7 @@ export type Database = {
           id?: string
           object_id?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -353,6 +356,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_view_story: {
+        Args: { story_user_id: string; story_visibility: string }
+        Returns: boolean
+      }
       connect_by_safeword: {
         Args: { p_safeword: string; p_username?: string }
         Returns: string
