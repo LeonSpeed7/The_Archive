@@ -146,51 +146,46 @@ export default function GlobalDatabaseTab() {
   const uniqueNames = [...new Set(objects?.map(o => o.name) ?? [])];
 
   return (
-    <div className="space-y-10 max-w-[100vw]">
-      <div className="max-w-2xl mx-auto animate-reveal-up">
-        <h2 className="font-display text-2xl font-semibold text-foreground">
-          Global <span className="text-primary">Archive</span>
+    <div className="relative -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-10 min-h-[60vh] space-y-10 rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, hsl(220 20% 12%), hsl(230 18% 16%), hsl(215 22% 14%))' }}>
+      {/* Grid overlay */}
+      <div
+        className="absolute inset-0 opacity-[0.04] pointer-events-none"
+        style={{
+          backgroundImage: `linear-gradient(hsl(200 60% 70%) 1px, transparent 1px), linear-gradient(90deg, hsl(200 60% 70%) 1px, transparent 1px)`,
+          backgroundSize: '40px 40px',
+        }}
+      />
+      {/* Radial glow */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 40%, hsl(18 62% 45% / 0.06) 0%, transparent 60%)' }} />
+
+      <div className="relative z-10 max-w-2xl mx-auto animate-reveal-up">
+        <h2 className="font-display text-2xl font-semibold text-white">
+          Global <span style={{ color: 'hsl(18 62% 55%)' }}>Archive</span>
         </h2>
-        <p className="text-muted-foreground mt-1">Community timeline of archived objects — sorted by date uploaded</p>
+        <p className="text-white/50 mt-1">Community timeline of archived objects — sorted by date uploaded</p>
       </div>
 
-      <div className="max-w-2xl mx-auto animate-reveal-up stagger-1 relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search the archive..." className="pl-10 bg-background" />
+      <div className="relative z-10 max-w-2xl mx-auto animate-reveal-up stagger-1 relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search the archive..." className="pl-10 bg-white/[0.08] border-white/15 text-white placeholder:text-white/30 focus-visible:ring-white/20" />
       </div>
 
       {/* Horizontal Timeline */}
-      <div className="animate-reveal-up stagger-2">
-        {isLoading && <p className="text-muted-foreground text-center py-8">Loading archive...</p>}
+      <div className="relative z-10 animate-reveal-up stagger-2">
+        {isLoading && <p className="text-white/50 text-center py-8">Loading archive...</p>}
 
         {allTimelineObjects.length === 0 && !isLoading && (
           <div className="text-center py-16">
-            <Archive className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-muted-foreground">No objects found</p>
-            <p className="text-sm text-muted-foreground/70 mt-1">Be the first to add one via the AR Camera tab</p>
+            <Archive className="w-10 h-10 text-white/20 mx-auto mb-3" />
+            <p className="text-white/50">No objects found</p>
+            <p className="text-sm text-white/30 mt-1">Be the first to add one via the AR Camera tab</p>
           </div>
         )}
 
         {allTimelineObjects.length > 0 && (
-          <div className="relative rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, hsl(220 20% 12%), hsl(230 18% 16%), hsl(215 22% 14%))' }}>
-            {/* Subtle grid pattern overlay */}
-            <div
-              className="absolute inset-0 opacity-[0.04] pointer-events-none"
-              style={{
-                backgroundImage: `linear-gradient(hsl(200 60% 70%) 1px, transparent 1px), linear-gradient(90deg, hsl(200 60% 70%) 1px, transparent 1px)`,
-                backgroundSize: '40px 40px',
-              }}
-            />
-            {/* Radial glow in center */}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: 'radial-gradient(ellipse at 50% 60%, hsl(18 62% 45% / 0.08) 0%, transparent 60%)',
-              }}
-            />
-
+          <div className="relative">
             {/* Scroll arrows */}
-            <div className="relative z-10 flex gap-2 pt-4 pb-2 justify-end px-5">
+            <div className="flex gap-2 mb-3 justify-end px-4">
               <Button variant="outline" size="icon" className="w-8 h-8 bg-white/10 border-white/15 text-white/70 hover:bg-white/20 hover:text-white" onClick={() => scroll('left')}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
@@ -199,7 +194,7 @@ export default function GlobalDatabaseTab() {
               </Button>
             </div>
 
-            <div ref={scrollRef} className="relative z-10 flex gap-0 overflow-x-auto pb-8 pt-2 px-5" style={{ scrollbarWidth: 'none' }}>
+            <div ref={scrollRef} className="flex gap-0 overflow-x-auto pb-8 pt-2 px-5" style={{ scrollbarWidth: 'none' }}>
               {allTimelineObjects.map((obj, i) => {
                 const color = TIMELINE_COLORS[i % TIMELINE_COLORS.length];
                 const isLast = i === allTimelineObjects.length - 1;
@@ -238,7 +233,7 @@ export default function GlobalDatabaseTab() {
                     <div
                       className={`mt-4 w-[200px] rounded-xl border px-4 py-3 text-left transition-all duration-300 backdrop-blur-sm group-hover:-translate-y-1 ${
                         isCenterItem
-                          ? 'shadow-lg shadow-black/30 border-2 scale-105 -mt-0'
+                          ? 'shadow-lg shadow-black/30 border-2 scale-105'
                           : 'group-hover:shadow-md group-hover:shadow-black/20'
                       }`}
                       style={{
@@ -278,12 +273,12 @@ export default function GlobalDatabaseTab() {
 
       {/* Explore Evolutions */}
       {uniqueNames.length > 0 && (
-        <div className="max-w-2xl mx-auto animate-reveal-up stagger-3 space-y-4 pt-6 border-t border-border">
+        <div className="relative z-10 max-w-2xl mx-auto animate-reveal-up stagger-3 space-y-4 pt-6 border-t border-white/10">
           <div>
-            <h3 className="font-display text-lg font-semibold text-foreground">
-              Explore <span className="text-primary">Evolutions</span>
+            <h3 className="font-display text-lg font-semibold text-white">
+              Explore <span style={{ color: 'hsl(18 62% 55%)' }}>Evolutions</span>
             </h3>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-white/40 mt-1">
               Tap any object to see how it evolved over history
             </p>
           </div>
@@ -293,12 +288,12 @@ export default function GlobalDatabaseTab() {
                 key={name}
                 onClick={() => generateEvolution(name)}
                 disabled={generatingFor !== null}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-card border border-border text-sm font-medium text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all duration-200 active:scale-[0.97] disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white/[0.08] border border-white/[0.12] text-sm font-medium text-white/80 hover:border-white/25 hover:bg-white/[0.12] transition-all duration-200 active:scale-[0.97] disabled:opacity-50"
               >
                 {generatingFor === name ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
-                  <Sparkles className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Sparkles className="w-3.5 h-3.5 text-white/40" />
                 )}
                 {name}
               </button>
