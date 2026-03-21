@@ -1,16 +1,11 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Camera, Globe, TreePine, LogOut, BookLock, UserCircle, Pencil, Check, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
+import { Camera, Globe, TreePine, BookLock } from 'lucide-react';
 import ARCameraTab from '@/components/tabs/ARCameraTab';
 import GlobalDatabaseTab from '@/components/tabs/GlobalDatabaseTab';
 import PersonalDatabaseTab from '@/components/tabs/PersonalDatabaseTab';
 import FamilyTreeTab from '@/components/tabs/FamilyTreeTab';
-import SafewordSetup, { useSafeword, SafewordDisplay } from '@/components/SafewordSetup';
+import ProfileMenu from '@/components/ProfileMenu';
 
 type Tab = 'camera' | 'personal' | 'database' | 'tree';
 
