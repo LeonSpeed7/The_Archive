@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Clock, Users, Volume2, Loader2, VolumeX, Globe, Lock, Sparkles, Calendar, ChevronLeft, ChevronRight, Pencil, X, Check } from 'lucide-react';
+import { ArrowLeft, Clock, Users, Volume2, Loader2, VolumeX, Globe, Lock, Sparkles, Calendar, ChevronLeft, ChevronRight, Pencil, X, Check, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
@@ -138,12 +138,36 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
     evoScrollRef.current?.scrollBy({ left: dir === 'left' ? -260 : 260, behavior: 'smooth' });
   };
 
+  // Fetch current user's profile for display at top
+  const { data: myProfile } = useQuery({
+    queryKey: ['my-profile', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('full_name, username, display_name')
+        .eq('user_id', user!.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
   if (!object) return <div className="text-center text-muted-foreground py-12">Loading...</div>;
 
   const estimatedOrigin = (object as any).estimated_origin;
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
+      {/* User identity bar */}
+      {myProfile && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground animate-fade-in">
+          <UserCircle className="w-4 h-4 text-primary" />
+          <span className="font-medium text-foreground">{myProfile.full_name || myProfile.display_name}</span>
+          {myProfile.username && <span className="font-mono">@{myProfile.username}</span>}
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <button
           onClick={onBack}

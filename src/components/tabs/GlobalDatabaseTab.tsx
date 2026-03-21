@@ -183,34 +183,47 @@ export default function GlobalDatabaseTab() {
               </Button>
             </div>
 
-            <div ref={scrollRef} className="flex gap-0 overflow-x-auto pb-6 px-4" style={{ scrollbarWidth: 'none' }}>
+            <div ref={scrollRef} className="flex gap-0 overflow-x-auto pb-6 px-4 items-end" style={{ scrollbarWidth: 'none' }}>
               {allTimelineObjects.map((obj, i) => {
                 const color = TIMELINE_COLORS[i % TIMELINE_COLORS.length];
                 const isLast = i === allTimelineObjects.length - 1;
                 const uploadDate = new Date(obj.created_at);
                 const estimatedOrigin = (obj as any).estimated_origin;
+                const isCenterItem = allTimelineObjects.length > 2 && i === Math.floor(allTimelineObjects.length / 2);
 
                 return (
                   <button
                     key={`${obj._source}-${obj.id}`}
                     onClick={() => setSelectedObjectId(obj.id)}
-                    className="flex-shrink-0 flex flex-col items-center group"
-                    style={{ width: 220 }}
+                    className={`flex-shrink-0 flex flex-col items-center group transition-all duration-500 ${
+                      isCenterItem ? 'scale-110 z-10 -mt-2' : ''
+                    }`}
+                    style={{ width: isCenterItem ? 240 : 220 }}
                   >
                     {/* Upload date label */}
-                    <p className="text-[10px] font-mono font-bold tracking-wider mb-2 opacity-70" style={{ color: color.bg }}>
+                    <p className={`font-mono font-bold tracking-wider mb-2 ${isCenterItem ? 'text-xs' : 'text-[10px] opacity-70'}`} style={{ color: color.bg }}>
                       {uploadDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
 
-                    {/* Horizontal spine: line — dot — line */}
+                    {/* Horizontal spine: line — icon — line */}
                     <div className="flex items-center w-full">
                       <div className="flex-1 h-0.5" style={{ backgroundColor: i === 0 ? 'transparent' : 'hsl(var(--border))' }} />
                       <div
-                        className="w-5 h-5 rounded-full border-[3px] flex-shrink-0 transition-transform duration-200 group-hover:scale-125 overflow-hidden"
-                        style={{ borderColor: color.bg, backgroundColor: color.light }}
+                        className={`rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-300 group-hover:scale-125 ${
+                          isCenterItem
+                            ? 'w-10 h-10 shadow-lg ring-4 ring-offset-2 ring-offset-background'
+                            : 'w-7 h-7 shadow-md'
+                        }`}
+                        style={{
+                          backgroundColor: color.bg,
+                          boxShadow: isCenterItem ? `0 0 20px ${color.bg}50, 0 4px 12px ${color.bg}30` : `0 2px 8px ${color.bg}25`,
+                          ...(isCenterItem ? { ringColor: color.bg + '40' } : {}),
+                        }}
                       >
-                        {obj.image_url && (
-                          <img src={obj.image_url} alt="" className="w-full h-full object-cover rounded-full" />
+                        {obj.image_url ? (
+                          <img src={obj.image_url} alt="" className={`object-cover rounded-full ${isCenterItem ? 'w-9 h-9' : 'w-6 h-6'}`} />
+                        ) : (
+                          <Archive className={`text-white ${isCenterItem ? 'w-5 h-5' : 'w-3.5 h-3.5'}`} />
                         )}
                       </div>
                       <div className="flex-1 h-0.5" style={{ backgroundColor: isLast ? 'transparent' : 'hsl(var(--border))' }} />
@@ -218,14 +231,19 @@ export default function GlobalDatabaseTab() {
 
                     {/* Card */}
                     <div
-                      className="mt-3 w-[200px] rounded-xl border px-4 py-3 text-left transition-all duration-300 group-hover:shadow-md group-hover:-translate-y-1"
-                      style={{ borderColor: color.bg + '30', backgroundColor: color.light + '40' }}
+                      className={`mt-3 rounded-xl border px-4 py-3 text-left transition-all duration-300 group-hover:shadow-md group-hover:-translate-y-1 ${
+                        isCenterItem ? 'w-[216px] shadow-lg border-2' : 'w-[200px]'
+                      }`}
+                      style={{
+                        borderColor: isCenterItem ? color.bg + '60' : color.bg + '30',
+                        backgroundColor: isCenterItem ? color.light + '70' : color.light + '40',
+                      }}
                     >
                       {obj.image_url && (
-                        <img src={obj.image_url} alt={obj.name} className="w-full h-24 object-cover rounded-lg mb-2" />
+                        <img src={obj.image_url} alt={obj.name} className={`w-full object-cover rounded-lg mb-2 ${isCenterItem ? 'h-28' : 'h-24'}`} />
                       )}
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <h4 className="font-display text-sm font-semibold text-foreground leading-tight truncate group-hover:text-primary transition-colors">
+                        <h4 className={`font-display font-semibold text-foreground leading-tight truncate group-hover:text-primary transition-colors ${isCenterItem ? 'text-base' : 'text-sm'}`}>
                           {obj.name}
                         </h4>
                         {obj._source === 'connected' && (
