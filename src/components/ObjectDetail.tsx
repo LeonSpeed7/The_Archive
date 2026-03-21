@@ -242,7 +242,7 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
                   </div>
                   <div className="mt-2 w-[175px] rounded-lg border px-3 py-2.5" style={{ borderColor: color.bg + '30', backgroundColor: color.light + '40' }}>
                     <h4 className="text-xs font-semibold text-foreground leading-tight">{entry.name}</h4>
-                    <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed line-clamp-3">{entry.description}</p>
+                    <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{entry.description}</p>
                   </div>
                 </div>
               );
