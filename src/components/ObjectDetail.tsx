@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Clock, Users, Volume2, Loader2, VolumeX, Globe, Lock, Sparkles, Calendar, ChevronLeft, ChevronRight, Pencil, X, Check } from 'lucide-react';
+import { ArrowLeft, Clock, Users, Volume2, Loader2, VolumeX, Globe, Lock, Sparkles, Calendar, ChevronLeft, ChevronRight, Pencil, X, Check, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
