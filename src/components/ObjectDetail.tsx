@@ -57,7 +57,7 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
       const col = isPersonal ? 'personal_object_id' : 'object_id';
       const { data, error } = await supabase
         .from('stories')
-        .select('*, profiles:user_id(display_name, full_name)')
+        .select('*, profiles:user_id(display_name, full_name, username)')
         .eq(col, objectId)
         .order('created_at', { ascending: false });
       if (error) throw error;
