@@ -19,18 +19,19 @@ interface EvolutionTimeline {
 }
 
 const TIMELINE_COLORS = [
-  { bg: 'hsl(262 80% 50%)', light: 'hsl(262 80% 95%)', text: 'hsl(262 80% 30%)' },
-  { bg: 'hsl(199 89% 48%)', light: 'hsl(199 89% 93%)', text: 'hsl(199 89% 25%)' },
-  { bg: 'hsl(142 71% 45%)', light: 'hsl(142 71% 93%)', text: 'hsl(142 71% 25%)' },
-  { bg: 'hsl(25 95% 53%)',  light: 'hsl(25 95% 93%)',  text: 'hsl(25 95% 30%)' },
-  { bg: 'hsl(346 77% 50%)', light: 'hsl(346 77% 93%)', text: 'hsl(346 77% 30%)' },
-  { bg: 'hsl(173 80% 40%)', light: 'hsl(173 80% 92%)', text: 'hsl(173 80% 22%)' },
+  { bg: 'hsl(28 80% 52%)', light: 'hsl(28 80% 95%)', text: 'hsl(28 80% 30%)' },
+  { bg: 'hsl(168 45% 43%)', light: 'hsl(168 45% 93%)', text: 'hsl(168 45% 25%)' },
+  { bg: 'hsl(210 18% 30%)', light: 'hsl(210 18% 92%)', text: 'hsl(210 18% 18%)' },
+  { bg: 'hsl(48 87% 50%)', light: 'hsl(48 87% 93%)', text: 'hsl(48 87% 30%)' },
+  { bg: 'hsl(145 50% 42%)', light: 'hsl(145 50% 93%)', text: 'hsl(145 50% 25%)' },
+  { bg: 'hsl(187 100% 42%)', light: 'hsl(187 100% 92%)', text: 'hsl(187 100% 22%)' },
 ];
 
 export default function GlobalDatabaseTab() {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
+  const [selectedSource, setSelectedSource] = useState<'global' | 'personal'>('global');
   const [evolutionView, setEvolutionView] = useState<EvolutionTimeline | null>(null);
   const [generatingFor, setGeneratingFor] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -75,7 +76,7 @@ export default function GlobalDatabaseTab() {
   };
 
   if (selectedObjectId) {
-    return <ObjectDetail objectId={selectedObjectId} onBack={() => setSelectedObjectId(null)} />;
+    return <ObjectDetail objectId={selectedObjectId} source={selectedSource} onBack={() => { setSelectedObjectId(null); setSelectedSource('global'); }} />;
   }
 
   // Evolution timeline view
@@ -112,17 +113,14 @@ export default function GlobalDatabaseTab() {
                 const isLast = i === evolutionView.entries.length - 1;
                 return (
                   <div key={i} className="flex-shrink-0 flex flex-col items-center" style={{ width: 220, animationDelay: `${i * 80}ms` }}>
-                    {/* Date label */}
                     <p className="text-xs font-mono font-bold tracking-wider mb-2" style={{ color: color.bg }}>
                       {entry.year}
                     </p>
-                    {/* Dot + line */}
                     <div className="flex items-center w-full">
                       <div className="flex-1 h-0.5" style={{ backgroundColor: i === 0 ? 'transparent' : color.bg + '40' }} />
                       <div className="w-4 h-4 rounded-full border-2 flex-shrink-0" style={{ borderColor: color.bg, backgroundColor: color.light }} />
                       <div className="flex-1 h-0.5" style={{ backgroundColor: isLast ? 'transparent' : color.bg + '40' }} />
                     </div>
-                    {/* Card below */}
                     <div className="mt-3 w-[200px] rounded-xl border px-4 py-3" style={{ borderColor: color.bg + '30', backgroundColor: color.light + '40' }}>
                       <h4 className="font-display text-sm font-semibold text-foreground leading-tight">{entry.name}</h4>
                       <p className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-3">{entry.description}</p>
@@ -146,21 +144,21 @@ export default function GlobalDatabaseTab() {
   const uniqueNames = [...new Set(objects?.map(o => o.name) ?? [])];
 
   return (
-    <div className="relative -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-10 min-h-[60vh] space-y-10 rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, hsl(220 20% 12%), hsl(230 18% 16%), hsl(215 22% 14%))' }}>
+    <div className="relative -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-10 min-h-[60vh] space-y-10 rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, hsl(210 29% 18%), hsl(210 18% 22%), hsl(210 29% 16%))' }}>
       {/* Grid overlay */}
       <div
         className="absolute inset-0 opacity-[0.04] pointer-events-none"
         style={{
-          backgroundImage: `linear-gradient(hsl(200 60% 70%) 1px, transparent 1px), linear-gradient(90deg, hsl(200 60% 70%) 1px, transparent 1px)`,
+          backgroundImage: `linear-gradient(hsl(var(--color-community)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--color-community)) 1px, transparent 1px)`,
           backgroundSize: '40px 40px',
         }}
       />
       {/* Radial glow */}
-      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 40%, hsl(18 62% 45% / 0.06) 0%, transparent 60%)' }} />
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 40%, hsl(28 80% 52% / 0.08) 0%, transparent 60%)' }} />
 
       <div className="relative z-10 max-w-2xl mx-auto animate-reveal-up">
         <h2 className="font-display text-2xl font-semibold text-white">
-          Community <span style={{ color: 'hsl(18 62% 55%)' }}>Archive</span>
+          Community <span style={{ color: 'hsl(28 80% 52%)' }}>Archive</span>
         </h2>
         <p className="text-white/70 mt-1">Community timeline of archived objects — sorted by date uploaded</p>
       </div>
@@ -184,7 +182,6 @@ export default function GlobalDatabaseTab() {
 
         {allTimelineObjects.length > 0 && (
           <div className="relative">
-            {/* Scroll arrows */}
             <div className="flex gap-2 mb-3 justify-end px-4">
               <Button variant="outline" size="icon" className="w-8 h-8 bg-white/10 border-white/15 text-white/70 hover:bg-white/20 hover:text-white" onClick={() => scroll('left')}>
                 <ChevronLeft className="w-4 h-4" />
@@ -205,16 +202,17 @@ export default function GlobalDatabaseTab() {
                 return (
                   <button
                     key={`${obj._source}-${obj.id}`}
-                    onClick={() => setSelectedObjectId(obj.id)}
+                    onClick={() => {
+                      setSelectedObjectId(obj.id);
+                      setSelectedSource(obj._source === 'connected' ? 'personal' : 'global');
+                    }}
                     className="flex-shrink-0 flex flex-col items-center group no-underline"
                     style={{ width: 220, textDecoration: 'none' }}
                   >
-                    {/* Upload date label */}
                     <p className="text-[10px] font-mono font-bold tracking-wider mb-2 text-white/70 no-underline">
                       {uploadDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
 
-                    {/* Horizontal spine — uniform height, uniform dots */}
                     <div className="flex items-center w-full">
                       <div className="flex-1 h-px" style={{ backgroundColor: i === 0 ? 'transparent' : 'hsl(200 30% 40% / 0.3)' }} />
                       <div
@@ -228,7 +226,6 @@ export default function GlobalDatabaseTab() {
                       <div className="flex-1 h-px" style={{ backgroundColor: isLast ? 'transparent' : 'hsl(200 30% 40% / 0.3)' }} />
                     </div>
 
-                    {/* Card popup */}
                     <div
                       className={`mt-4 w-[200px] rounded-xl border px-4 py-3 text-left transition-all duration-300 backdrop-blur-sm group-hover:-translate-y-1 ${
                         isCenterItem
@@ -250,7 +247,7 @@ export default function GlobalDatabaseTab() {
                           {obj.name}
                         </h4>
                         {obj._source === 'connected' && (
-                          <Users className="w-3 h-3 text-accent flex-shrink-0" />
+                          <Users className="w-3 h-3 flex-shrink-0" style={{ color: 'hsl(var(--color-community))' }} />
                         )}
                       </div>
                       {estimatedOrigin && (
@@ -275,7 +272,7 @@ export default function GlobalDatabaseTab() {
         <div className="relative z-10 max-w-2xl mx-auto animate-reveal-up stagger-3 space-y-4 pt-6 border-t border-white/10">
           <div>
             <h3 className="font-display text-lg font-semibold text-white">
-              Explore <span style={{ color: 'hsl(18 62% 55%)' }}>Evolutions</span>
+              Explore <span style={{ color: 'hsl(28 80% 52%)' }}>Evolutions</span>
             </h3>
             <p className="text-sm text-white/60 mt-1">
               Tap any object to see how it evolved over history
