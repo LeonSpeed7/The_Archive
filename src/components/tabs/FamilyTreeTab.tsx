@@ -390,6 +390,8 @@ function InteractiveTree({ members, myName, myUsername, myGender }: {
     el.addEventListener('wheel', prevent, { passive: false });
     return () => el.removeEventListener('wheel', prevent);
   }, []);
+
+  const toggleGen = (gen: number) => {
     if (gen === 0) return;
     setCollapsedGens(prev => {
       const next = new Set(prev);
