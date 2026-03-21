@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Clock, Users, Volume2, Loader2, VolumeX, Globe, Lock, Sparkles, Calendar, ChevronLeft, ChevronRight, Pencil, X, Check, UserCircle } from 'lucide-react';
+import { ArrowLeft, Clock, Users, Volume2, Loader2, VolumeX, Globe, Lock, Sparkles, Calendar, ChevronLeft, ChevronRight, Pencil, X, Check, UserCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
@@ -175,12 +175,22 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
         >
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
-        {object.history && (
-          <Button variant="outline" size="sm" onClick={playNarration} disabled={isLoadingAudio} className="gap-1.5">
-            {isLoadingAudio ? <Loader2 className="w-4 h-4 animate-spin" /> : isPlaying ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            {isLoadingAudio ? 'Loading…' : isPlaying ? 'Stop' : 'Listen'}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Delete button - only for own objects */}
+          {((isPersonal && (object as any).user_id === user?.id) || (!isPersonal && (object as any).created_by === user?.id)) && (
+            <DeleteObjectButton
+              objectId={objectId}
+              table={isPersonal ? 'personal_objects' : 'objects'}
+              onDeleted={onBack}
+            />
+          )}
+          {object.history && (
+            <Button variant="outline" size="sm" onClick={playNarration} disabled={isLoadingAudio} className="gap-1.5">
+              {isLoadingAudio ? <Loader2 className="w-4 h-4 animate-spin" /> : isPlaying ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              {isLoadingAudio ? 'Loading…' : isPlaying ? 'Stop' : 'Listen'}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Object info */}
@@ -274,6 +284,54 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
         queryClient={queryClient}
       />
     </div>
+  );
+}
+
+/* ─── Delete Object Button ─── */
+function DeleteObjectButton({ objectId, table, onDeleted }: { objectId: string; table: string; onDeleted: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const queryClient = useQueryClient();
+
+  const deleteMut = useMutation({
+    mutationFn: async () => {
+      // Delete related stories first
+      const col = table === 'personal_objects' ? 'personal_object_id' : 'object_id';
+      await supabase.from('stories').delete().eq(col, objectId);
+      if (table === 'personal_objects') {
+        const { error } = await supabase.from('personal_objects').delete().eq('id', objectId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('objects').delete().eq('id', objectId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success('Object deleted');
+      queryClient.invalidateQueries({ queryKey: ['objects-search'] });
+      queryClient.invalidateQueries({ queryKey: ['global-objects'] });
+      queryClient.invalidateQueries({ queryKey: ['all-objects'] });
+      queryClient.invalidateQueries({ queryKey: ['personal-objects'] });
+      onDeleted();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  if (confirming) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs text-destructive font-medium">Delete?</span>
+        <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => deleteMut.mutate()} disabled={deleteMut.isPending}>
+          {deleteMut.isPending ? 'Deleting…' : 'Yes'}
+        </Button>
+        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setConfirming(false)}>No</Button>
+      </div>
+    );
+  }
+
+  return (
+    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive gap-1.5" onClick={() => setConfirming(true)}>
+      <Trash2 className="w-4 h-4" /> Delete
+    </Button>
   );
 }
 
