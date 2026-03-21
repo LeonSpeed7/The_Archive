@@ -297,8 +297,13 @@ function DeleteObjectButton({ objectId, table, onDeleted }: { objectId: string; 
       // Delete related stories first
       const col = table === 'personal_objects' ? 'personal_object_id' : 'object_id';
       await supabase.from('stories').delete().eq(col, objectId);
-      const { error } = await supabase.from(table).delete().eq('id', objectId);
-      if (error) throw error;
+      if (table === 'personal_objects') {
+        const { error } = await supabase.from('personal_objects').delete().eq('id', objectId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('objects').delete().eq('id', objectId);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       toast.success('Object deleted');
