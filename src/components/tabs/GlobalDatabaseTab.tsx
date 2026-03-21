@@ -180,7 +180,15 @@ export default function GlobalDatabaseTab() {
     ...(objects?.map(o => ({ ...o, _source: 'global' as const })) ?? []),
     ...(myPersonalObjects?.map(o => ({ ...o, _source: 'mine' as const })) ?? []),
     ...(connectedObjects?.map(o => ({ ...o, _source: 'connected' as const })) ?? []),
-  ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  ]
+    .filter(obj => {
+      // If AI search returned results, filter by matched IDs
+      if (aiSearchIds !== null && search.trim()) {
+        return aiSearchIds.includes(obj.id);
+      }
+      return true;
+    })
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   const uniqueNames = [...new Set(objects?.map(o => o.name) ?? [])];
 
