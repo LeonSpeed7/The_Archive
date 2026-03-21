@@ -9,7 +9,7 @@ import ProfileMenu from '@/components/ProfileMenu';
 type Tab = 'camera' | 'personal' | 'database' | 'tree';
 
 const tabs: { id: Tab; label: string; icon: typeof Camera }[] = [
-  { id: 'camera', label: 'AR Camera', icon: Camera },
+  { id: 'camera', label: 'AI Camera', icon: Camera },
   { id: 'personal', label: 'My Archive', icon: BookLock },
   { id: 'database', label: 'Global Database', icon: Globe },
   { id: 'tree', label: 'Family Tree', icon: TreePine },
@@ -24,7 +24,7 @@ export default function Dashboard() {
       <header className="border-b border-border bg-card/60 backdrop-blur-sm sticky top-0 z-50">
         <div className="container flex items-center justify-between h-16">
           <h1 className="font-display text-xl font-semibold tracking-tight text-foreground">
-            Heritage Archive
+            The Archive
           </h1>
           <ProfileMenu />
         </div>

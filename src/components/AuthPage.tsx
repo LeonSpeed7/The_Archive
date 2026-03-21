@@ -50,7 +50,7 @@ export default function AuthPage() {
       <div className="w-full max-w-md">
         <div className="animate-reveal-up text-center mb-10">
           <h1 className="font-display text-4xl font-bold text-foreground tracking-tight leading-[1.1]">
-            Heritage Archive
+            The Archive
           </h1>
           <p className="mt-3 text-muted-foreground text-lg">
             Preserve your stories. Connect your past.

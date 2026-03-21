@@ -208,8 +208,8 @@ export default function ARCameraTab() {
       <div className="animate-reveal-up">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="font-display text-2xl font-semibold text-foreground">AR Camera</h2>
-            <p className="text-muted-foreground mt-1">Capture or upload an object — AI will identify it</p>
+            <h2 className="font-display text-2xl font-semibold text-foreground">AI Camera</h2>
+            <p className="text-muted-foreground mt-1">Capture or upload an object — AI will identify it and add it to the database</p>
           </div>
           <div className="flex-shrink-0 text-right">
             <div className="flex items-center gap-2">
