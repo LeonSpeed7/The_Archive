@@ -196,14 +196,13 @@ function getNodeBounds(node: TNode) {
 function NodeShape({ x, y, node }: { x: number; y: number; node: TNode }) {
   const gc = getGender(node.gender);
   const ini = initials(node.name);
-  const truncName = node.name.length > 13 ? node.name.slice(0, 12) + '…' : node.name;
+  const displayName = node.isYou ? 'You' : node.name;
   const isYou = !!node.isYou;
   const strokeW = isYou ? 2.5 : 1.5;
-  const extra = isYou ? YOU_EXTRA : 0;
 
-  const w = NODE_W + extra;
-  const h = NODE_H + extra;
-  const r = NODE_R + (isYou ? 4 : 0);
+  const w = measureNodeW(node.name, isYou);
+  const h = NODE_H + (isYou ? YOU_EXTRA : 0);
+  const r = measureNodeR(node.name, isYou);
 
   return (
     <g className="cursor-default">
@@ -248,10 +247,10 @@ function NodeShape({ x, y, node }: { x: number; y: number; node: TNode }) {
         {ini}
       </text>
 
-      {/* Name */}
+      {/* Full Name */}
       <text x={x} y={y + 10} textAnchor="middle" dominantBaseline="central"
         fill={gc.stroke} fontSize="8.5" fontWeight="500" fontFamily="var(--font-body)" opacity={0.85}>
-        {isYou ? 'You' : truncName}
+        {displayName}
       </text>
 
       {/* Username below shape */}
