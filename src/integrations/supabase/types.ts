@@ -321,7 +321,8 @@ export type Database = {
           content: string
           created_at: string
           id: string
-          object_id: string
+          object_id: string | null
+          personal_object_id: string | null
           user_id: string
           visibility: string
         }
@@ -329,7 +330,8 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
-          object_id: string
+          object_id?: string | null
+          personal_object_id?: string | null
           user_id: string
           visibility?: string
         }
@@ -337,7 +339,8 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
-          object_id?: string
+          object_id?: string | null
+          personal_object_id?: string | null
           user_id?: string
           visibility?: string
         }
@@ -347,6 +350,13 @@ export type Database = {
             columns: ["object_id"]
             isOneToOne: false
             referencedRelation: "objects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stories_personal_object_id_fkey"
+            columns: ["personal_object_id"]
+            isOneToOne: false
+            referencedRelation: "personal_objects"
             referencedColumns: ["id"]
           },
         ]
