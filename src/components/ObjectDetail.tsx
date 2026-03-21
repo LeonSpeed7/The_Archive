@@ -17,6 +17,7 @@ interface TimelineEntry {
   year: string;
   name: string;
   description: string;
+  relatedImages?: { id: string; name: string; image_url: string }[];
 }
 
 const TIMELINE_COLORS = [
@@ -80,6 +81,24 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
     },
   });
 
+  // Fetch related community objects by name similarity
+  const { data: communityObjects } = useQuery({
+    queryKey: ['related-community-objects', object?.name],
+    queryFn: async () => {
+      if (!object?.name) return [];
+      // Get all community objects, we'll match by name keywords
+      const { data, error } = await supabase
+        .from('objects')
+        .select('id, name, image_url, description')
+        .neq('id', objectId)
+        .not('image_url', 'is', null)
+        .limit(100);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!object?.name,
+  });
+
   // Auto-generate evolution timeline when object loads
   useEffect(() => {
     if (object?.name && !evolution && !loadingEvolution) {
@@ -94,6 +113,22 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
         .finally(() => setLoadingEvolution(false));
     }
   }, [object?.name]);
+
+  // Match community images to timeline entries based on keyword similarity
+  const enrichedEvolution = evolution?.map((entry) => {
+    if (!communityObjects || communityObjects.length === 0) return entry;
+    const entryWords = (entry.name + ' ' + entry.description).toLowerCase().split(/\s+/);
+    const objectNameWords = (object?.name || '').toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
+    
+    const matches = communityObjects.filter((co) => {
+      const coName = co.name.toLowerCase();
+      // Match if the community object name shares keywords with the timeline entry or the main object
+      return objectNameWords.some((w: string) => coName.includes(w)) ||
+             entryWords.some((w) => w.length > 3 && coName.includes(w));
+    });
+    
+    return { ...entry, relatedImages: matches.length > 0 ? matches.slice(0, 3) : undefined };
+  });
 
   const playNarration = async () => {
     if (isPlaying && audioRef.current) {
@@ -228,7 +263,7 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
             <Sparkles className="w-4 h-4 text-primary" />
             <h3 className="font-display text-lg font-semibold text-foreground">Evolution Timeline</h3>
           </div>
-          {evolution && evolution.length > 0 && (
+          {enrichedEvolution && enrichedEvolution.length > 0 && (
             <div className="flex gap-1">
               <Button variant="outline" size="icon" className="w-7 h-7" onClick={() => scrollEvo('left')}>
                 <ChevronLeft className="w-3.5 h-3.5" />
@@ -247,11 +282,11 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
           </div>
         )}
 
-        {evolution && evolution.length > 0 && (
+        {enrichedEvolution && enrichedEvolution.length > 0 && (
           <div ref={evoScrollRef} className="flex gap-0 overflow-x-auto pb-3" style={{ scrollbarWidth: 'none' }}>
-            {evolution.map((entry, i) => {
+            {enrichedEvolution.map((entry, i) => {
               const color = TIMELINE_COLORS[i % TIMELINE_COLORS.length];
-              const isLast = i === evolution.length - 1;
+              const isLast = i === enrichedEvolution.length - 1;
               return (
                 <div key={i} className="flex-shrink-0 flex flex-col items-center" style={{ width: 190 }}>
                   <p className="text-[10px] font-mono font-bold tracking-wider mb-1.5" style={{ color: color.bg }}>
@@ -267,6 +302,29 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
                   <div className="mt-2 w-[175px] rounded-lg border px-3 py-2.5" style={{ borderColor: color.bg + '30', backgroundColor: color.light + '40' }}>
                     <h4 className="text-xs font-semibold text-foreground leading-tight">{entry.name}</h4>
                     <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{entry.description}</p>
+                    {/* Related community images */}
+                    {entry.relatedImages && entry.relatedImages.length > 0 && (
+                      <div className="mt-2 space-y-1.5">
+                        <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: color.bg }}>
+                          From Community
+                        </p>
+                        <div className="flex gap-1 flex-wrap">
+                          {entry.relatedImages.map((ri) => (
+                            <div key={ri.id} className="relative group">
+                              <img
+                                src={ri.image_url}
+                                alt={ri.name}
+                                className="w-10 h-10 object-cover rounded border"
+                                style={{ borderColor: color.bg + '40' }}
+                              />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 bg-foreground text-background text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                {ri.name}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -274,7 +332,7 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
           </div>
         )}
 
-        {!loadingEvolution && (!evolution || evolution.length === 0) && (
+        {!loadingEvolution && (!enrichedEvolution || enrichedEvolution.length === 0) && (
           <p className="text-sm text-muted-foreground text-center py-4">No evolution data available</p>
         )}
       </div>
