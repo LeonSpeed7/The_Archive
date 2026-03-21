@@ -30,7 +30,7 @@ const features = [
 
 const stats = [
   { label: 'Objects Archived', value: '∞' },
-  { label: 'AI Models', value: '2' },
+  { label: 'Accessibility Features', value: '5+' },
   { label: 'Privacy First', value: '✓' },
 ];
 
