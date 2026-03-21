@@ -24,6 +24,13 @@ const STEPS: Step[] = [
     tip: 'Try uploading a photo of something meaningful to you to see AI identification in action.',
   },
   {
+    tab: 'livesense',
+    title: 'Live Sense',
+    description: 'Point your camera at your surroundings and let AI continuously identify objects in real time. After a few moments, you\'ll get a detailed summary of the most interesting items with their histories.',
+    icon: Camera,
+    tip: 'Move your camera slowly around the room — the AI works best with steady footage.',
+  },
+  {
     tab: 'personal',
     title: 'My Archive',
     description: 'Your private collection. Objects saved here are visible only to you and your connected family members. Add personal stories and memories to each item.',
