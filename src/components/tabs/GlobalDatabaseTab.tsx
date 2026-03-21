@@ -206,7 +206,7 @@ export default function GlobalDatabaseTab() {
                   <button
                     key={`${obj._source}-${obj.id}`}
                     onClick={() => setSelectedObjectId(obj.id)}
-                    className="flex-shrink-0 flex flex-col items-center group"
+                    className="flex-shrink-0 flex flex-col items-center group no-underline decoration-transparent"
                     style={{ width: 220 }}
                   >
                     {/* Upload date label */}
