@@ -144,7 +144,7 @@ export default function PersonalDatabaseTab() {
           items={familyItems}
           sortKey={familySort}
           onSortChange={setFamilySort}
-          onSelect={(id) => { setSelectedObjectId(id); setViewMode('detail'); }}
+          onSelect={(id, obj) => { setSelectedSource(obj?._source === 'community' ? 'community' : 'personal'); setSelectedObjectId(id); setViewMode('detail'); }}
           onDelete={(id) => deleteObject.mutate(id)}
           onToggleVisibility={(id, vis) => toggleVisibility.mutate({ id, visibility: vis })}
           toggleLabel="Move to Public"
@@ -161,7 +161,7 @@ export default function PersonalDatabaseTab() {
           items={publicItems}
           sortKey={publicSort}
           onSortChange={setPublicSort}
-          onSelect={(id) => { setSelectedObjectId(id); setViewMode('detail'); }}
+          onSelect={(id, obj) => { setSelectedSource(obj?._source === 'community' ? 'community' : 'personal'); setSelectedObjectId(id); setViewMode('detail'); }}
           onDelete={(id) => deleteObject.mutate(id)}
           onToggleVisibility={(id, vis) => toggleVisibility.mutate({ id, visibility: vis })}
           toggleLabel="Move to Family"
