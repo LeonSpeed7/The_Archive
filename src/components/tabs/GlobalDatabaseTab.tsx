@@ -206,24 +206,23 @@ export default function GlobalDatabaseTab() {
                   <button
                     key={`${obj._source}-${obj.id}`}
                     onClick={() => setSelectedObjectId(obj.id)}
-                    className="flex-shrink-0 flex flex-col items-center group no-underline decoration-transparent"
-                    style={{ width: 220 }}
+                    className="flex-shrink-0 flex flex-col items-center group no-underline"
+                    style={{ width: 220, textDecoration: 'none' }}
                   >
                     {/* Upload date label */}
-                    <p className="text-[10px] font-mono font-bold tracking-wider mb-2 text-white/70">
+                    <p className="text-[10px] font-mono font-bold tracking-wider mb-2 text-white/70 no-underline">
                       {uploadDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
 
-                    {/* Horizontal spine — uniform height */}
+                    {/* Horizontal spine — uniform height, uniform dots */}
                     <div className="flex items-center w-full">
                       <div className="flex-1 h-px" style={{ backgroundColor: i === 0 ? 'transparent' : 'hsl(200 30% 40% / 0.3)' }} />
                       <div
-                        className={`rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-300 group-hover:scale-125 ${
-                          isCenterItem ? 'w-4 h-4' : 'w-3 h-3'
-                        }`}
+                        className="w-4 h-4 rounded-full flex-shrink-0 transition-all duration-300 group-hover:scale-125 border-2"
                         style={{
-                          backgroundColor: isCenterItem ? color.bg : 'hsl(200 30% 50% / 0.5)',
-                          boxShadow: isCenterItem ? `0 0 12px ${color.bg}60` : 'none',
+                          backgroundColor: color.bg,
+                          borderColor: 'hsl(200 60% 70% / 0.4)',
+                          boxShadow: isCenterItem ? `0 0 14px ${color.bg}60` : `0 0 6px ${color.bg}30`,
                         }}
                       />
                       <div className="flex-1 h-px" style={{ backgroundColor: isLast ? 'transparent' : 'hsl(200 30% 40% / 0.3)' }} />
