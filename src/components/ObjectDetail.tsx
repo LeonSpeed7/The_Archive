@@ -152,7 +152,7 @@ export default function ObjectDetail({ objectId, onBack, source = 'global' }: Pr
       utterance.rate = 0.95;
       utterance.pitch = 1;
       utterance.onend = () => { setIsPlaying(false); setIsPaused(false); };
-      utterance.onerror = () => { setIsPlaying(false); setIsPaused(false); toast.error('Speech synthesis failed'); };
+      utterance.onerror = (e) => { setIsPlaying(false); setIsPaused(false); if (e.error && e.error !== 'canceled' && e.error !== 'interrupted') { toast.error('Speech synthesis failed'); } };
       window.speechSynthesis.speak(utterance);
       setIsPlaying(true);
       setIsPaused(false);
