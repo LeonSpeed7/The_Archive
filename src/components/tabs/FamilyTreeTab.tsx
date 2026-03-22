@@ -881,7 +881,7 @@ export default function FamilyTreeTab() {
       }}>
         <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-[0.06] bg-white" />
         <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full opacity-[0.04] bg-white" />
-        <div className="relative flex items-start justify-between gap-4">
+        <div className="relative flex items-center justify-center gap-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'hsl(0 0% 100% / 0.12)' }}>
               <TreePine className="w-6 h-6 text-white" />
@@ -892,7 +892,7 @@ export default function FamilyTreeTab() {
             </div>
           </div>
           <Button size="sm" onClick={() => setShowAddForm(!showAddForm)}
-            className="border-0 font-semibold active:scale-[0.96]"
+            className="absolute right-0 border-0 font-semibold active:scale-[0.96] hover:brightness-110 transition-all"
             style={{ backgroundColor: 'hsl(var(--teal-cta))', color: 'hsl(var(--teal-900))' }}>
             <Plus className="w-4 h-4 mr-1.5" />
             Add Member
