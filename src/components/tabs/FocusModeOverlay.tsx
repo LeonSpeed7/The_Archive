@@ -54,32 +54,46 @@ export default function FocusModeOverlay({ item, onClose }: FocusModeOverlayProp
     return () => { cancelled = true; };
   }, [item.name]);
 
-  // Search community objects matching name and load stories
+  // Search community objects matching name using AI search + keyword fallback
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setIsLoadingStories(true);
       try {
-        const { data: objects } = await supabase
-          .from('objects')
-          .select('id, name')
-          .ilike('name', `%${item.name}%`)
-          .limit(5);
+        // Run AI semantic search and keyword search in parallel
+        const [aiResult, keywordResult] = await Promise.allSettled([
+          supabase.functions.invoke('ai-search', { body: { query: item.name } }),
+          supabase.from('objects').select('id').ilike('name', `%${item.name}%`).limit(10),
+        ]);
 
-        if (cancelled || !objects?.length) {
+        if (cancelled) return;
+
+        const objectIdSet = new Set<string>();
+
+        // Collect AI-matched IDs
+        if (aiResult.status === 'fulfilled' && aiResult.value.data?.ids) {
+          (aiResult.value.data.ids as string[]).forEach(id => objectIdSet.add(id));
+        }
+
+        // Collect keyword-matched IDs
+        if (keywordResult.status === 'fulfilled' && keywordResult.value.data) {
+          keywordResult.value.data.forEach((o: { id: string }) => objectIdSet.add(o.id));
+        }
+
+        const objectIds = [...objectIdSet];
+        if (!objectIds.length) {
           if (!cancelled) setCommunityStories([]);
           if (!cancelled) setIsLoadingStories(false);
           return;
         }
 
-        const objectIds = objects.map(o => o.id);
         const { data: stories } = await supabase
           .from('stories')
           .select('id, content, visibility, created_at, user_id')
           .in('object_id', objectIds)
           .eq('visibility', 'global')
           .order('created_at', { ascending: false })
-          .limit(5);
+          .limit(8);
 
         if (cancelled) return;
 
