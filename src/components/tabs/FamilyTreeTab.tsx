@@ -875,15 +875,27 @@ export default function FamilyTreeTab() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div className="animate-fade-in flex items-start justify-between gap-4">
-        <div>
-          <h2 className="font-display text-2xl font-semibold text-foreground">Family Tree</h2>
-          <p className="text-muted-foreground mt-1 text-sm">Connect with family · drag to pan</p>
+      {/* Hero header */}
+      <div className="animate-fade-in rounded-2xl p-6 relative overflow-hidden" style={{
+        background: 'linear-gradient(135deg, hsl(var(--teal-700)) 0%, hsl(var(--teal-900)) 100%)',
+      }}>
+        <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-[0.06] bg-white" />
+        <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full opacity-[0.04] bg-white" />
+        <div className="relative flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'hsl(0 0% 100% / 0.12)' }}>
+              <TreePine className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="font-display text-xl font-semibold text-white">Family Tree</h2>
+              <p className="text-white/60 text-sm mt-0.5">Connect with family · drag to pan</p>
+            </div>
+          </div>
+          <Button size="sm" onClick={() => setShowAddForm(!showAddForm)} className="text-white border-white/20 hover:bg-white/10" variant="outline">
+            <Plus className="w-4 h-4 mr-1.5" />
+            Add Member
+          </Button>
         </div>
-        <Button size="sm" onClick={() => setShowAddForm(!showAddForm)}>
-          <Plus className="w-4 h-4 mr-1.5" />
-          Add Member
-        </Button>
       </div>
 
       {showAddForm && (
