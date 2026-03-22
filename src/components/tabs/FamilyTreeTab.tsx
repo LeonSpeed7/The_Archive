@@ -891,7 +891,9 @@ export default function FamilyTreeTab() {
               <p className="text-white/60 text-sm mt-0.5">Connect with family · drag to pan</p>
             </div>
           </div>
-          <Button size="sm" onClick={() => setShowAddForm(!showAddForm)} className="text-white border-white/20 hover:bg-white/10" variant="outline">
+          <Button size="sm" onClick={() => setShowAddForm(!showAddForm)}
+            className="border-0 font-semibold active:scale-[0.96]"
+            style={{ backgroundColor: 'hsl(var(--teal-cta))', color: 'hsl(var(--teal-900))' }}>
             <Plus className="w-4 h-4 mr-1.5" />
             Add Member
           </Button>

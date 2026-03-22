@@ -60,24 +60,38 @@ export default function FocusModeOverlay({ item, onClose }: FocusModeOverlayProp
     (async () => {
       setIsLoadingStories(true);
       try {
-        // Run AI semantic search and keyword search in parallel
-        const [aiResult, keywordResult] = await Promise.allSettled([
+        // Split detected name into individual words for broader matching
+        const nameWords = item.name.split(/\s+/).filter(w => w.length > 2);
+        const searchPatterns = [item.name, ...nameWords];
+
+        // Run AI semantic search and multiple keyword searches in parallel
+        const searches = [
           supabase.functions.invoke('ai-search', { body: { query: item.name } }),
-          supabase.from('objects').select('id').ilike('name', `%${item.name}%`).limit(10),
-        ]);
+          ...searchPatterns.map(pattern =>
+            supabase.from('objects').select('id').ilike('name', `%${pattern}%`).limit(10)
+          ),
+          // Also search by description for broader matches
+          supabase.from('objects').select('id').ilike('description', `%${item.name}%`).limit(10),
+        ];
+
+        const results = await Promise.allSettled(searches);
 
         if (cancelled) return;
 
         const objectIdSet = new Set<string>();
 
-        // Collect AI-matched IDs
-        if (aiResult.status === 'fulfilled' && aiResult.value.data?.ids) {
-          (aiResult.value.data.ids as string[]).forEach(id => objectIdSet.add(id));
+        // First result is AI search
+        const aiResult = results[0];
+        if (aiResult.status === 'fulfilled' && (aiResult.value as any).data?.ids) {
+          ((aiResult.value as any).data.ids as string[]).forEach(id => objectIdSet.add(id));
         }
 
-        // Collect keyword-matched IDs
-        if (keywordResult.status === 'fulfilled' && keywordResult.value.data) {
-          keywordResult.value.data.forEach((o: { id: string }) => objectIdSet.add(o.id));
+        // Remaining results are keyword searches
+        for (let i = 1; i < results.length; i++) {
+          const r = results[i];
+          if (r.status === 'fulfilled' && (r.value as any).data) {
+            (r.value as any).data.forEach((o: { id: string }) => objectIdSet.add(o.id));
+          }
         }
 
         const objectIds = [...objectIdSet];
@@ -133,25 +147,40 @@ export default function FocusModeOverlay({ item, onClose }: FocusModeOverlayProp
     (async () => {
       setIsLoadingConnections(true);
       try {
-        // Check personal objects
-        const { data: personalObjects } = await supabase
-          .from('personal_objects')
-          .select('name, visibility')
-          .ilike('name', `%${item.name}%`)
-          .limit(3);
+        // Split name into words for broader matching
+        const nameWords = item.name.split(/\s+/).filter(w => w.length > 2);
+        const allPatterns = [item.name, ...nameWords];
 
-        // Check family-connected personal objects
-        const { data: familyObjects } = await supabase
-          .rpc('search_connected_personal_objects', { p_search: item.name });
+        // Check personal objects with multiple search patterns
+        const personalSearches = allPatterns.map(pattern =>
+          supabase.from('personal_objects').select('name, visibility').ilike('name', `%${pattern}%`).limit(5)
+        );
+        // Also search by description
+        personalSearches.push(
+          supabase.from('personal_objects').select('name, visibility').ilike('description', `%${item.name}%`).limit(5)
+        );
+
+        const [familyResult, ...personalResults] = await Promise.allSettled([
+          supabase.rpc('search_connected_personal_objects', { p_search: item.name }),
+          ...personalSearches,
+        ]);
 
         if (cancelled) return;
 
-        const connections: string[] = [];
-        if (personalObjects?.length) {
-          connections.push(`Found in your personal archive (${personalObjects.length})`);
+        // Deduplicate personal objects by name
+        const personalSet = new Set<string>();
+        for (const r of personalResults) {
+          if (r.status === 'fulfilled' && (r.value as any).data) {
+            (r.value as any).data.forEach((o: { name: string }) => personalSet.add(o.name));
+          }
         }
-        if (familyObjects?.length) {
-          connections.push(`Found in family archives (${familyObjects.length})`);
+
+        const connections: string[] = [];
+        if (personalSet.size > 0) {
+          connections.push(`Found in your personal archive (${personalSet.size})`);
+        }
+        if (familyResult.status === 'fulfilled' && (familyResult.value as any).data?.length) {
+          connections.push(`Found in family archives (${(familyResult.value as any).data.length})`);
         }
         setFamilyConnections(connections);
       } catch {
