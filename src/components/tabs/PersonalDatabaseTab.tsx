@@ -117,9 +117,21 @@ export default function PersonalDatabaseTab() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
-      <div className="animate-reveal-up">
-        <h2 className="font-display text-2xl font-semibold text-foreground">Personal Archive</h2>
-        <p className="text-muted-foreground mt-1">Your private collection, organized by visibility</p>
+      {/* Hero header */}
+      <div className="animate-reveal-up rounded-2xl p-6 relative overflow-hidden" style={{
+        background: 'linear-gradient(135deg, hsl(var(--teal-600)) 0%, hsl(var(--teal-800)) 100%)',
+      }}>
+        <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-[0.06] bg-white" />
+        <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full opacity-[0.04] bg-white" />
+        <div className="relative flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'hsl(0 0% 100% / 0.15)' }}>
+            <BookLock className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h2 className="font-display text-xl font-semibold text-white">Personal Archive</h2>
+            <p className="text-white/60 text-sm mt-0.5">Your private collection, organized by visibility</p>
+          </div>
+        </div>
       </div>
 
       <div className="animate-reveal-up stagger-1 relative">

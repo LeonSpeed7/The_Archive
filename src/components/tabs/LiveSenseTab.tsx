@@ -188,30 +188,39 @@ export default function LiveSenseTab() {
                 const [xMin, yMin, xMax, yMax] = item.bbox;
                 const isFocused = focusedItem?.name === item.name;
                 const hasFocus = focusedItem !== null;
+                const color = confidenceColor[item.confidence] || confidenceColor.medium;
                 return (
                   <button
                     key={`${item.name}-${i}`}
-                    onClick={() => setFocusedItem(item)}
-                    className="absolute transition-all duration-500 ease-out cursor-pointer"
+                    onClick={(e) => { e.stopPropagation(); setFocusedItem(item); }}
+                    className="absolute transition-all duration-500 ease-out cursor-pointer group/bbox active:scale-[0.97]"
                     style={{
-                      left: `${xMin * 100}%`,
-                      top: `${yMin * 100}%`,
-                      width: `${(xMax - xMin) * 100}%`,
-                      height: `${(yMax - yMin) * 100}%`,
-                      border: `2px solid ${confidenceColor[item.confidence] || confidenceColor.medium}`,
-                      borderRadius: '8px',
-                      opacity: hasFocus && !isFocused ? 0.2 : 1,
-                      boxShadow: isFocused ? `0 0 20px ${confidenceColor[item.confidence]}` : 'none',
+                      left: `${Math.max(0, xMin * 100 - 2)}%`,
+                      top: `${Math.max(0, yMin * 100 - 4)}%`,
+                      width: `${Math.min(100 - xMin * 100, (xMax - xMin) * 100 + 4)}%`,
+                      height: `${Math.min(100 - yMin * 100, (yMax - yMin) * 100 + 6)}%`,
+                      padding: '4px',
+                      opacity: hasFocus && !isFocused ? 0.15 : 1,
                     }}
                   >
+                    {/* Visible border box */}
+                    <div className="w-full h-full rounded-lg transition-all duration-300 group-hover/bbox:shadow-lg" style={{
+                      border: `2.5px solid ${color}`,
+                      boxShadow: isFocused ? `0 0 24px ${color}, inset 0 0 12px ${color}30` : `0 0 8px ${color}40`,
+                      backgroundColor: `${color}08`,
+                    }} />
+                    {/* Label — clickable, positioned above the box */}
                     <span
-                      className="absolute -top-6 left-0 px-2 py-0.5 rounded-md text-[11px] font-bold whitespace-nowrap pointer-events-none"
+                      className="absolute -top-5 left-1 px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap cursor-pointer shadow-md transition-all duration-200 group-hover/bbox:scale-105 group-hover/bbox:-top-6"
                       style={{
-                        backgroundColor: confidenceColor[item.confidence] || confidenceColor.medium,
+                        backgroundColor: color,
                         color: 'white',
+                        textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                        boxShadow: `0 2px 8px ${color}60`,
                       }}
                     >
                       {item.name}
+                      <span className="ml-1.5 opacity-70 text-[9px]">↗</span>
                     </span>
                   </button>
                 );
