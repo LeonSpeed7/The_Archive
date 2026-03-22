@@ -29,7 +29,7 @@ const features = [
 ];
 
 const stats = [
-  { label: 'Objects Archived', value: '∞' },
+  { label: 'Objects Archived', value: '✓' },
   { label: 'Accessibility Features', value: '✓' },
   { label: 'Privacy First', value: '✓' },
 ];
