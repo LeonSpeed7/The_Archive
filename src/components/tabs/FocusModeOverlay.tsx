@@ -54,24 +54,31 @@ export default function FocusModeOverlay({ item, onClose }: FocusModeOverlayProp
     return () => { cancelled = true; };
   }, [item.name]);
 
-  // Search community objects matching name using AI search + keyword fallback
+  // Search community objects using AI-expanded terms for better matching
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setIsLoadingStories(true);
       try {
-        // Split detected name into individual words for broader matching
+        // Generate related search terms via AI for better fuzzy matching
         const nameWords = item.name.split(/\s+/).filter(w => w.length > 2);
         const searchPatterns = [item.name, ...nameWords];
 
+        // Also generate synonyms/related terms from the item brief
+        const briefWords = item.brief?.split(/\s+/).filter(w => w.length > 3).slice(0, 3) || [];
+        const allPatterns = [...new Set([...searchPatterns, ...briefWords])];
+
         // Run AI semantic search and multiple keyword searches in parallel
         const searches = [
-          supabase.functions.invoke('ai-search', { body: { query: item.name } }),
-          ...searchPatterns.map(pattern =>
+          supabase.functions.invoke('ai-search', { body: { query: `${item.name} ${item.brief || ''}` } }),
+          ...allPatterns.map(pattern =>
             supabase.from('objects').select('id').ilike('name', `%${pattern}%`).limit(10)
           ),
-          // Also search by description for broader matches
-          supabase.from('objects').select('id').ilike('description', `%${item.name}%`).limit(10),
+          ...allPatterns.map(pattern =>
+            supabase.from('objects').select('id').ilike('description', `%${pattern}%`).limit(10)
+          ),
+          // Also search by history field
+          supabase.from('objects').select('id').ilike('history', `%${item.name}%`).limit(10),
         ];
 
         const results = await Promise.allSettled(searches);
@@ -139,26 +146,23 @@ export default function FocusModeOverlay({ item, onClose }: FocusModeOverlayProp
       }
     })();
     return () => { cancelled = true; };
-  }, [item.name]);
+  }, [item.name, item.brief]);
 
-  // Check personal/family objects matching name
+  // Check personal/family objects matching name with expanded search
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setIsLoadingConnections(true);
       try {
-        // Split name into words for broader matching
         const nameWords = item.name.split(/\s+/).filter(w => w.length > 2);
-        const allPatterns = [item.name, ...nameWords];
+        const briefWords = item.brief?.split(/\s+/).filter(w => w.length > 3).slice(0, 3) || [];
+        const allPatterns = [...new Set([item.name, ...nameWords, ...briefWords])];
 
-        // Check personal objects with multiple search patterns
-        const personalSearches = allPatterns.map(pattern =>
-          supabase.from('personal_objects').select('name, visibility').ilike('name', `%${pattern}%`).limit(5)
-        );
-        // Also search by description
-        personalSearches.push(
-          supabase.from('personal_objects').select('name, visibility').ilike('description', `%${item.name}%`).limit(5)
-        );
+        // Check personal objects with multiple search patterns across name + description
+        const personalSearches = allPatterns.flatMap(pattern => [
+          supabase.from('personal_objects').select('name, visibility').ilike('name', `%${pattern}%`).limit(5),
+          supabase.from('personal_objects').select('name, visibility').ilike('description', `%${pattern}%`).limit(5),
+        ]);
 
         const [familyResult, ...personalResults] = await Promise.allSettled([
           supabase.rpc('search_connected_personal_objects', { p_search: item.name }),
@@ -167,7 +171,6 @@ export default function FocusModeOverlay({ item, onClose }: FocusModeOverlayProp
 
         if (cancelled) return;
 
-        // Deduplicate personal objects by name
         const personalSet = new Set<string>();
         for (const r of personalResults) {
           if (r.status === 'fulfilled' && (r.value as any).data) {
@@ -190,7 +193,7 @@ export default function FocusModeOverlay({ item, onClose }: FocusModeOverlayProp
       }
     })();
     return () => { cancelled = true; };
-  }, [item.name]);
+  }, [item.name, item.brief]);
 
   // Close on Escape key
   useEffect(() => {

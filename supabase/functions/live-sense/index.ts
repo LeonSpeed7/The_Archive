@@ -78,10 +78,16 @@ Keep histories concise but informative and fascinating.`,
           {
             role: "system",
             content: `You are a real-time scene analysis AI. Given a camera frame, quickly identify the main visible objects/items in the scene. For each detected item, provide:
-- name: short label
+- name: short descriptive label (for people, use "Person" — NEVER assume or mention gender, age, or ethnicity)
 - confidence: "high", "medium", or "low"
-- bbox: normalized bounding box [x_min, y_min, x_max, y_max] (0-1 range)
-- brief: one-sentence description
+- bbox: normalized bounding box [x_min, y_min, x_max, y_max] (0-1 range) — be as precise as possible, tightly fitting the object
+- brief: one-sentence description (gender-neutral language for people)
+
+IMPORTANT RULES:
+- Bounding boxes must tightly fit each object — do NOT use large generic regions
+- Each distinct object gets its own bounding box — do NOT group multiple objects together
+- For people: use "Person" or "Person with [item]" — NEVER use gendered terms like man/woman/boy/girl
+- Be specific about objects: "Ceramic Coffee Mug" not just "Cup", "Leather Wallet" not just "Object"
 
 Respond ONLY with valid JSON: {"items": [{"name":"...","confidence":"...","bbox":[0,0,1,1],"brief":"..."}]}
 Keep it to the 5 most prominent/interesting items. Be fast and concise.`,
