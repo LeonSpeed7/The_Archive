@@ -242,9 +242,10 @@ export default function LiveSenseTab() {
 
           {/* Tap hint */}
           {detectedItems.length > 0 && !focusedItem && (
-            <p className="text-center text-xs text-muted-foreground animate-fade-in">
-              Tap any labeled object for its history & connections
-            </p>
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground animate-fade-in py-2 px-4 rounded-xl mx-auto w-fit" style={{ backgroundColor: 'hsl(var(--teal-50))', border: '1px solid hsl(var(--teal-200))' }}>
+              <span className="inline-block w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: 'hsl(var(--teal-500))' }} />
+              Tap any label to explore its history & connections
+            </div>
           )}
 
           <Button onClick={stopSensing} variant="outline" className="w-full rounded-xl h-11 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground">
